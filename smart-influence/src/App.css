@@ -14,6 +14,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .brand h1 {
@@ -119,4 +122,38 @@ select {
 
 .footer-link-button:hover {
   text-decoration: underline;
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.auth-modal {
+  position: relative;
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow: auto;
+}
+
+.auth-close-button {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 1;
+  border: none;
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
 }
