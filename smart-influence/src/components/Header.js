@@ -2,15 +2,15 @@ import { useNavigate } from 'react-router-dom';
 
 function Header() {
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
 
   return (
     <header className="header">
-      <div className="brand">
+      <button className="brand" type="button" onClick={() => navigate('/')}>
         <h1>Smart Influence</h1>
-        <p>Платформа для аналізу інфлуенсерів</p>
-      </div>
-      <button className="header-button" type="button" onClick={() => navigate('/login')}>
-        Увійти
+      </button>
+      <button className="header-button" type="button" onClick={() => navigate(token ? '/profile' : '/login')}>
+        {token ? 'Profile' : 'Увійти'}
       </button>
     </header>
   );

@@ -19,14 +19,20 @@
   z-index: 20;
 }
 
+.brand {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
 .brand h1 {
   margin: 0;
   font-size: 24px;
-}
-
-.brand p {
-  margin: 4px 0 0;
-  color: #cbd5e1;
+  line-height: 1;
 }
 
 .header-button {
