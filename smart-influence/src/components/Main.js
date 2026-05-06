@@ -1,8 +1,15 @@
+import { useState } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import '../App.css';
 
 function Main() {
+  const [analysisMessage, setAnalysisMessage] = useState('');
+
+  const showUnavailableMessage = () => {
+    setAnalysisMessage('This functionality does not work yet. It will be available in a future version.');
+  };
+
   return (
     <div className="page">
       <Header />
@@ -43,9 +50,10 @@ function Main() {
               Мін. engagement rate (%)
               <input type="number" step="0.1" placeholder="2.5" />
             </label>
-            <button className="primary-button" type="button">
+            <button className="primary-button" type="button" onClick={showUnavailableMessage}>
               Запустити аналіз
             </button>
+            {analysisMessage && <p className="form-message">{analysisMessage}</p>}
           </div>
         </section>
 

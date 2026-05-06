@@ -114,6 +114,16 @@ select {
   cursor: pointer;
 }
 
+.form-message {
+  margin: 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
 .list {
   margin: 0;
   padding-left: 18px;
