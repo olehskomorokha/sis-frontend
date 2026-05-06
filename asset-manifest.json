@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.css": "/smart-influence/static/css/main.edd8d572.css",
-    "main.js": "/smart-influence/static/js/main.0f184785.js",
-    "index.html": "/smart-influence/index.html",
-    "main.edd8d572.css.map": "/smart-influence/static/css/main.edd8d572.css.map",
-    "main.0f184785.js.map": "/smart-influence/static/js/main.0f184785.js.map"
+    "main.css": "/sis-frontend/static/css/main.edd8d572.css",
+    "main.js": "/sis-frontend/static/js/main.0f184785.js",
+    "index.html": "/sis-frontend/index.html",
+    "main.edd8d572.css.map": "/sis-frontend/static/css/main.edd8d572.css.map",
+    "main.0f184785.js.map": "/sis-frontend/static/js/main.0f184785.js.map"
   },
   "entrypoints": [
     "static/css/main.edd8d572.css",
