@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/smart-influence/static/css/main.edd8d572.css",
+    "main.js": "/smart-influence/static/js/main.db08305c.js",
+    "index.html": "/smart-influence/index.html",
+    "main.edd8d572.css.map": "/smart-influence/static/css/main.edd8d572.css.map",
+    "main.db08305c.js.map": "/smart-influence/static/js/main.db08305c.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.edd8d572.css",
+    "static/js/main.db08305c.js"
+  ]
+}
