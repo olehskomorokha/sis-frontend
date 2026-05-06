@@ -260,7 +260,7 @@ const ClientProfile = () => {
                     }
                 </div>
             </main>
-            <Footer showPrivacyButton={false} />
+            <Footer />
         </div>
     )
 };

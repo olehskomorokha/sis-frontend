@@ -1,15 +1,8 @@
-import { useState } from 'react';
-import PrivacyPolicy from '../Other/PrivacyPolicy';
 import Header from './Header';
 import Footer from './Footer';
 import '../App.css';
 
 function Main() {
-    const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
-
-    if (isPrivacyOpen) {
-        return <PrivacyPolicy onBackToHome={() => setIsPrivacyOpen(false)} />;
-    }
   return (
     <div className="page">
       <Header />
@@ -58,7 +51,7 @@ function Main() {
 
       </main>
 
-      <Footer onPrivacyClick={() => setIsPrivacyOpen(true)} />
+      <Footer />
     </div>
   );
 }
