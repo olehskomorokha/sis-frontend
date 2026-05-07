@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/sis-frontend/static/css/main.edd8d572.css",
-    "main.js": "/sis-frontend/static/js/main.0f184785.js",
+    "main.js": "/sis-frontend/static/js/main.27317592.js",
     "index.html": "/sis-frontend/index.html",
     "main.edd8d572.css.map": "/sis-frontend/static/css/main.edd8d572.css.map",
-    "main.0f184785.js.map": "/sis-frontend/static/js/main.0f184785.js.map"
+    "main.27317592.js.map": "/sis-frontend/static/js/main.27317592.js.map"
   },
   "entrypoints": [
     "static/css/main.edd8d572.css",
-    "static/js/main.0f184785.js"
+    "static/js/main.27317592.js"
   ]
 }
