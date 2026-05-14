@@ -1,14 +1,124 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import '../App.css';
 
+const TAGS_API_URL = 'https://localhost:7237/api/Tag';
+
+const getTagName = (tag) => {
+  if (typeof tag === 'string') {
+    return tag;
+  }
+
+  if (!tag || typeof tag !== 'object') {
+    return '';
+  }
+
+  return tag.name || tag.tagName || tag.title || tag.value || tag.label || String(tag.id || '');
+};
+
+const parseTagsResponse = (responseText) => {
+  try {
+    const parsed = JSON.parse(responseText);
+    const list = Array.isArray(parsed) ? parsed : parsed?.$values || parsed?.items || parsed?.data || [];
+
+    return list
+      .map(getTagName)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  } catch {
+    return responseText
+      .split(/[\n,;]/)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+};
+
 function InfluencerSelection() {
   const [analysisMessage, setAnalysisMessage] = useState('');
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [tagSearch, setTagSearch] = useState('');
+  const [isTagMenuOpen, setIsTagMenuOpen] = useState(false);
+  const [tagsError, setTagsError] = useState('');
+  const [areTagsLoading, setAreTagsLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadTags = async () => {
+      try {
+        setAreTagsLoading(true);
+        setTagsError('');
+
+        const response = await fetch(TAGS_API_URL, {
+          headers: {
+            accept: 'text/plain',
+          },
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Could not load tags');
+        }
+
+        const responseText = await response.text();
+        const tags = [...new Set(parseTagsResponse(responseText))];
+        setAvailableTags(tags);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setTagsError('Не вдалося завантажити теги з бази даних.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAreTagsLoading(false);
+        }
+      }
+    };
+
+    loadTags();
+
+    return () => controller.abort();
+  }, []);
 
   const showUnavailableMessage = () => {
     setAnalysisMessage('Ця функціональність ще не працює. Вона буде доступна у наступній версії.');
   };
+
+  const tagsForSearch = useMemo(() => {
+    const normalizedSearch = tagSearch.trim().toLowerCase();
+
+    return availableTags
+      .filter((tag) => !selectedTags.includes(tag))
+      .filter((tag) => tag.toLowerCase().includes(normalizedSearch))
+      .slice(0, 8);
+  }, [availableTags, selectedTags, tagSearch]);
+
+  const addSelectedTag = (tag) => {
+    if (tag && availableTags.includes(tag) && !selectedTags.includes(tag)) {
+      setSelectedTags((currentTags) => [...currentTags, tag]);
+      setTagSearch('');
+      setIsTagMenuOpen(false);
+    }
+  };
+
+  const removeSelectedTag = (tagToRemove) => {
+    setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleTagSearchKeyDown = (event) => {
+    if (event.key === 'Enter' && tagsForSearch.length > 0) {
+      event.preventDefault();
+      addSelectedTag(tagsForSearch[0]);
+    }
+
+    if (event.key === 'Escape') {
+      setIsTagMenuOpen(false);
+    }
+  };
+
+  const isTagSearchDisabled = areTagsLoading || Boolean(tagsError) || availableTags.length === 0;
+  const shouldShowTagMenu = isTagMenuOpen && !isTagSearchDisabled;
 
   return (
     <div className="page">
@@ -58,6 +168,73 @@ function InfluencerSelection() {
               Країна
               <input type="text" placeholder="Україна / Poland / Germany" />
             </label>
+
+            <div className="field-group">
+              <label htmlFor="tag-search">Теги продукту</label>
+              <div className="tag-search">
+                <input
+                  id="tag-search"
+                  type="text"
+                  value={tagSearch}
+                  disabled={isTagSearchDisabled}
+                  placeholder={areTagsLoading ? 'Завантаження тегів...' : 'Beauty, Health, Cars, etc.'}
+                  autoComplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={shouldShowTagMenu}
+                  aria-controls="tag-search-options"
+                  onChange={(event) => {
+                    setTagSearch(event.target.value);
+                    setIsTagMenuOpen(true);
+                  }}
+                  onFocus={() => setIsTagMenuOpen(true)}
+                  onBlur={() => setIsTagMenuOpen(false)}
+                  onKeyDown={handleTagSearchKeyDown}
+                />
+                {shouldShowTagMenu && (
+                  <div className="tag-dropdown" id="tag-search-options" role="listbox">
+                    {tagsForSearch.length > 0 ? (
+                      tagsForSearch.map((tag) => (
+                        <button
+                          className="tag-option"
+                          type="button"
+                          role="option"
+                          aria-selected="false"
+                          key={tag}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => addSelectedTag(tag)}
+                        >
+                          {tag}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="tag-empty-state">
+                        Такого тегу немає в базі даних
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {selectedTags.length > 0 && (
+              <div className="selected-tags" aria-label="Обрані теги">
+                {selectedTags.map((tag) => (
+                  <span className="tag-chip" key={tag}>
+                    {tag}
+                    <button
+                      type="button"
+                      aria-label={`Видалити тег ${tag}`}
+                      onClick={() => removeSelectedTag(tag)}
+                    >
+                      x
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {tagsError && <p className="form-message">{tagsError}</p>}
+
             <label>
               Мінімум підписників
               <input type="number" placeholder="10000" />
@@ -84,7 +261,7 @@ function InfluencerSelection() {
                   </span>
                 </span>
               </span>
-              <input type="number" step="0.1" placeholder="2.5" />
+              <input type="number" min="0" max="100" step="0.1" placeholder="2.5" />
             </label>
             <button className="primary-button" type="button" onClick={showUnavailableMessage}>
               Запустити аналіз
