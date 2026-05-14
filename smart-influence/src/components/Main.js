@@ -1,66 +1,106 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 import '../App.css';
 
 function Main() {
-  const [analysisMessage, setAnalysisMessage] = useState('');
-
-  const showUnavailableMessage = () => {
-    setAnalysisMessage('This functionality does not work yet. It will be available in a future version.');
-  };
+  const navigate = useNavigate();
 
   return (
     <div className="page">
       <Header />
 
-      <main className="main-content">
-        <section className="card">
-          <h2>Пошук потенційних інфлуенсерів</h2>
-          <p>Введіть нішу, бренд або ключову тему для аналізу.</p>
-          <label className="full-width">
-            Запит користувача
-            <input
-              type="text"
-              placeholder="Наприклад: eco skincare micro influencers in Europe"
-            />
-          </label>
-
-          <div className="filters">
-            <h3>Налаштування та фільтри</h3>
-            <label>
-              Платформа
-              <select defaultValue="instagram">
-                <option value="instagram">Facebook</option>
-              </select>
-            </label>
-            <label>
-              Країна
-              <input type="text" placeholder="Україна / Poland / Germany" />
-            </label>
-            <label>
-              Мінімум підписників
-              <input type="number" placeholder="10000" />
-            </label>
-            <label>
-              Максимум підписників
-              <input type="number" placeholder="500000" />
-            </label>
-            <label>
-              Мін. engagement rate (%)
-              <input type="number" step="0.1" placeholder="2.5" />
-            </label>
-            <button className="primary-button" type="button" onClick={showUnavailableMessage}>
-              Запустити аналіз
+      <main className="main-content home-content">
+        <section className="product-hero">
+          <div className="hero-copy">
+            <p className="eyebrow">Smart Influence</p>
+            <h2>Система для пошуку релевантних інфлуенсерів</h2>
+            <p>
+              Smart Influence допомагає брендам швидше знаходити авторів для рекламних
+              кампаній, порівнювати їх за ключовими показниками та готувати короткий
+              список кандидатів для співпраці.
+            </p>
+            <button
+              className="primary-button hero-action"
+              type="button"
+              onClick={() => navigate('/influencer-selection')}
+            >
+              Перейти до підбору інфлуенсерів
             </button>
-            {analysisMessage && <p className="form-message">{analysisMessage}</p>}
+          </div>
+
+          <div className="hero-visual" aria-label="Приклад аналітичної панелі Smart Influence">
+            <div className="visual-topline">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="visual-profile">
+              <div className="visual-avatar">SI</div>
+              <div>
+                <strong>Beauty creator</strong>
+                <p>Ukraine · Facebook</p>
+              </div>
+            </div>
+            <div className="visual-bars">
+              <span className="bar-wide" />
+              <span className="bar-medium" />
+              <span className="bar-short" />
+            </div>
+            <div className="visual-score">
+              <strong>87%</strong>
+              <span>match score</span>
+            </div>
           </div>
         </section>
 
+        <section className="info-grid" aria-label="Як працювати з продуктом">
+          <article className="info-card">
+            <span className="step-number">1</span>
+            <h3>Опишіть потребу кампанії</h3>
+            <p>
+              Вкажіть нішу, країну, бажаний розмір аудиторії та мінімальний рівень
+              залучення для майбутньої співпраці.
+            </p>
+          </article>
+          <article className="info-card">
+            <span className="step-number">2</span>
+            <h3>Уточніть критерії пошуку</h3>
+            <p>
+              Додайте фільтри за платформою, географією та показниками профілю, щоб
+              прибрати нерелевантних кандидатів.
+            </p>
+          </article>
+          <article className="info-card">
+            <span className="step-number">3</span>
+            <h3>Порівняйте результати</h3>
+            <p>
+              Перегляньте список інфлуенсерів, їхню аудиторію, активність і потенційну
+              відповідність вашому бренду.
+            </p>
+          </article>
+        </section>
+
+        <section className="product-note">
+          <h3>Як взаємодіяти із системою</h3>
+          <p>
+            Почніть із короткого опису кампанії, поступово звужуйте параметри пошуку та
+            використовуйте профіль користувача для перегляду доступних інфлуенсерів.
+            Кнопка нижче відкриває робочу сторінку підбору.
+          </p>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => navigate('/influencer-selection')}
+          >
+            Відкрити сторінку підбору
+          </button>
+        </section>
       </main>
 
       <Footer />
     </div>
   );
 }
+
 export default Main;

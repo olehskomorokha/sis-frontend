@@ -11,7 +11,7 @@ function PrivacyPolicy() {
 
       <main className="main-content">
         <section className="card privacy-policy-card">
-          <h2>Privacy Policy</h2>
+          <h2>Privacy Policy</h2> 
 
           <p>
             This Privacy Policy describes how the application Smart Influence

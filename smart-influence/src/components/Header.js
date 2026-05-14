@@ -10,7 +10,7 @@ function Header() {
         <h1>Smart Influence</h1>
       </button>
       <button className="header-button" type="button" onClick={() => navigate(token ? '/profile' : '/login')}>
-        {token ? 'Profile' : 'Увійти'}
+        {token ? 'Профіль' : 'Увійти'}
       </button>
     </header>
   );
