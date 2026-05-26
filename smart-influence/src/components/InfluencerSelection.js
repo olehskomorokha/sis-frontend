@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 import '../App.css';
+import {
+  parseChannelsResponse,
+  RECOMMENDED_INFLUENCERS_STORAGE_KEY,
+} from '../utils/influencers';
 
-const TAGS_API_URL = 'https://localhost:7237/api/Tag';
+const TAGS_API_URL = 'https://localhost:7237/api/Elasticsearch/bloggerTags';
+const RECOMMENDATIONS_API_URL = 'https://localhost:7237/api/Influencer/recommendations';
+
+const COUNTRIES = [
+  { value: 'UA', label: 'Україна' },
+];
 
 const getTagName = (tag) => {
   if (typeof tag === 'string') {
@@ -35,7 +45,14 @@ const parseTagsResponse = (responseText) => {
 };
 
 function InfluencerSelection() {
+  const navigate = useNavigate();
   const [analysisMessage, setAnalysisMessage] = useState('');
+  const [description, setDescription] = useState('');
+  const [country, setCountry] = useState('UA');
+  const [minFollowersCount, setMinFollowersCount] = useState('');
+  const [minAvgViews, setMinAvgViews] = useState('');
+  const [resultCount, setResultCount] = useState('10');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [availableTags, setAvailableTags] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [tagSearch, setTagSearch] = useState('');
@@ -81,8 +98,57 @@ function InfluencerSelection() {
     return () => controller.abort();
   }, []);
 
-  const showUnavailableMessage = () => {
-    setAnalysisMessage('Ця функціональність ще не працює. Вона буде доступна у наступній версії.');
+  const runAnalysis = async () => {
+    if (!description.trim()) {
+      setAnalysisMessage('Додайте опис продукту або кампанії перед запуском аналізу.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    const payload = {
+      description: description.trim(),
+      country,
+      tags: selectedTags,
+      minFollowersCount: minFollowersCount === '' ? null : Number(minFollowersCount),
+      minAvgViews: minAvgViews === '' ? null : Number(minAvgViews),
+      resultCount: resultCount === '' ? 10 : Number(resultCount),
+    };
+
+    try {
+      setIsAnalyzing(true);
+      setAnalysisMessage('');
+
+      const response = await fetch(RECOMMENDATIONS_API_URL, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(errorMessage || 'Could not run analysis');
+      }
+
+      const data = await response.json();
+      const recommendedChannels = parseChannelsResponse(data);
+
+      if (recommendedChannels.length === 0) {
+        setAnalysisMessage('За цими параметрами канали не знайдено.');
+        return;
+      }
+
+      sessionStorage.setItem(RECOMMENDED_INFLUENCERS_STORAGE_KEY, JSON.stringify(recommendedChannels));
+      navigate('/influencer-recommendations', { state: { channels: recommendedChannels } });
+    } catch (error) {
+      console.error('Recommendation error:', error);
+      setAnalysisMessage('Не вдалося виконати аналіз. Перевірте, чи запущений backend та Elasticsearch.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const tagsForSearch = useMemo(() => {
@@ -150,8 +216,9 @@ function InfluencerSelection() {
                 </span>
               </span>
             </span>
-            <input
-              type="text"
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
               placeholder="Наприклад: натуральна косметика для молодої аудиторії в Європі"
             />
           </label>
@@ -159,14 +226,14 @@ function InfluencerSelection() {
           <div className="filters">
             <h3>Налаштування та фільтри</h3>
             <label>
-              Платформа
-              <select defaultValue="facebook">
-                <option value="facebook">Facebook</option>
-              </select>
-            </label>
-            <label>
               Країна
-              <input type="text" placeholder="Україна / Poland / Germany" />
+              <select value={country} onChange={(event) => setCountry(event.target.value)}>
+                {COUNTRIES.map((country) => (
+                  <option value={country.value} key={country.value}>
+                    {country.label}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <div className="field-group">
@@ -237,38 +304,41 @@ function InfluencerSelection() {
 
             <label>
               Мінімум підписників
-              <input type="number" placeholder="10000" />
+              <input
+                type="number"
+                min="0"
+                value={minFollowersCount}
+                onChange={(event) => setMinFollowersCount(event.target.value)}
+                placeholder="10000"
+              />
             </label>
             <label>
-              Максимум підписників
-              <input type="number" placeholder="500000" />
+              Середня кількість переглядів
+              <input
+                type="number"
+                min="0"
+                value={minAvgViews}
+                onChange={(event) => setMinAvgViews(event.target.value)}
+                placeholder="5000"
+              />
             </label>
             <label>
-              <span className="label-with-tooltip">
-                Мін. engagement rate (%)
-                <span className="tooltip-wrapper">
-                  <button
-                    className="info-tooltip-button"
-                    type="button"
-                    aria-label="Що таке engagement rate"
-                  >
-                    i
-                  </button>
-                  <span className="tooltip-content" role="tooltip">
-                    Engagement rate показує, яка частка аудиторії взаємодіє з контентом:
-                    ставить вподобання, коментує або поширює дописи. Вищий показник
-                    означає активнішу аудиторію.
-                  </span>
-                </span>
-              </span>
-              <input type="number" min="0" max="100" step="0.1" placeholder="2.5" />
+              Кількість каналів
+              <input
+                type="number"
+                min="1"
+                value={resultCount}
+                onChange={(event) => setResultCount(event.target.value)}
+                placeholder="10"
+              />
             </label>
-            <button className="primary-button" type="button" onClick={showUnavailableMessage}>
-              Запустити аналіз
+            <button className="primary-button" type="button" onClick={runAnalysis} disabled={isAnalyzing}>
+              {isAnalyzing ? 'Аналіз триває...' : 'Запустити аналіз'}
             </button>
             {analysisMessage && <p className="form-message">{analysisMessage}</p>}
           </div>
         </section>
+
       </main>
 
       <Footer />

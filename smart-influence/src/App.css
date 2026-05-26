@@ -60,6 +60,10 @@
   width: min(860px, 92%);
 }
 
+.recommendations-content {
+  width: min(1120px, 92%);
+}
+
 .product-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
@@ -347,7 +351,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 10px;
@@ -355,10 +360,19 @@ select {
 }
 
 input:disabled,
-select:disabled {
+select:disabled,
+textarea:disabled,
+.primary-button:disabled {
   background: #f1f5f9;
   color: #64748b;
   cursor: not-allowed;
+}
+
+textarea {
+  min-height: 108px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
 }
 
 .selected-tags {
@@ -486,6 +500,281 @@ select:disabled {
   padding-left: 18px;
 }
 
+.results-section {
+  display: grid;
+  gap: 16px;
+}
+
+.results-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.results-header h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.results-header span {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.selection-influencer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.selection-influencer-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.selection-influencer-card:hover,
+.selection-influencer-card:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.selection-influencer-card-selected {
+  border-color: #2563eb;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.14);
+}
+
+.selection-influencer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selection-influencer-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.selection-influencer-link:hover h3,
+.selection-influencer-link:focus h3 {
+  color: #1d4ed8;
+}
+
+.selection-influencer-header img,
+.selection-influencer-fallback {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  border-radius: 50%;
+}
+
+.selection-influencer-header img {
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.selection-influencer-fallback {
+  display: grid;
+  place-items: center;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.selection-influencer-header h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.selection-influencer-header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.selection-influencer-description {
+  display: -webkit-box;
+  min-height: 66px;
+  margin: 0;
+  overflow: hidden;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.selection-influencer-ai-review {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  padding: 12px;
+}
+
+.selection-influencer-ai-review span {
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.selection-influencer-ai-review p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #166534;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.selection-influencer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.selection-influencer-stats div {
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.selection-influencer-stats span {
+  display: block;
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.selection-influencer-stats strong {
+  color: #0f172a;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.selection-influencer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.selection-influencer-actions .primary-button,
+.selection-influencer-actions .secondary-button {
+  justify-self: auto;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.recommendations-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.recommendations-toolbar span {
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.modal-open {
+  overflow: hidden;
+}
+
+.influencer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.68);
+  padding: 24px;
+}
+
+.influencer-modal {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  width: min(760px, 96vw);
+  max-height: 88vh;
+  overflow: auto;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 24px;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.32);
+}
+
+.influencer-modal .selection-influencer-header img,
+.influencer-modal .selection-influencer-fallback {
+  width: 72px;
+  height: 72px;
+  flex-basis: 72px;
+}
+
+.influencer-modal .selection-influencer-header h3 {
+  font-size: 24px;
+}
+
+.influencer-modal .selection-influencer-description {
+  display: block;
+  min-height: 0;
+  overflow: visible;
+}
+
+.influencer-modal .selection-influencer-ai-review p {
+  display: block;
+  overflow: visible;
+}
+
+.influencer-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .footer {
   margin-top: auto;
   display: flex;
@@ -551,8 +840,20 @@ select:disabled {
 
 @media (max-width: 780px) {
   .product-hero,
-  .info-grid {
+  .info-grid,
+  .selection-influencer-grid,
+  .selection-influencer-stats {
     grid-template-columns: 1fr;
+  }
+
+  .results-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recommendations-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .product-hero {

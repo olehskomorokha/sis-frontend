@@ -3,6 +3,7 @@ import ClientProfile from './Authentication/Components/ClientProfile/ClientProfi
 import LoginSingUp from './Authentication/Components/LoginSignUp/LoginSignUp';
 import Main from './components/Main';
 import InfluencerSelection from './components/InfluencerSelection';
+import InfluencerRecommendations from './components/InfluencerRecommendations';
 import DataDeletion from './Other/DataDeletion';
 import PrivacyPolicy from './Other/PrivacyPolicy';
 import { HashRouter, Routes, Route } from 'react-router-dom';
@@ -14,6 +15,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Main />} />
           <Route path="/influencer-selection" element={<InfluencerSelection />} />
+          <Route path="/influencer-recommendations" element={<InfluencerRecommendations />} />
           <Route path="/login" element={<LoginSingUp />} />
           <Route path="/profile" element={<ClientProfile />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
