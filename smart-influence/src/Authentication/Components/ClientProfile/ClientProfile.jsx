@@ -2,7 +2,19 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../../../components/Footer';
 import Header from '../../../components/Header';
+import { getClientIdFromToken } from '../../../utils/influencers';
 import './ClientProfile.css';
+
+const CLIENT_API_URL = 'https://localhost:7237/api/Client';
+const CLIENT_INFLUENCERS_API_URL = 'https://localhost:7237/api/Influencer/client';
+
+const parseJsonResponse = (responseText, fallbackValue) => {
+    if (!responseText.trim()) {
+        return fallbackValue;
+    }
+
+    return JSON.parse(responseText);
+};
 
 const ClientProfile = () => {
     const navigate = useNavigate();
@@ -10,11 +22,7 @@ const ClientProfile = () => {
     const [influencers, setInfluencers] = useState([]);
     const [formData, setFormData] = useState({
         brand: "",
-        email: "",
-        budget: "",
-        targetCountry: "",
-        targetAudience: "",
-        goals: ""
+        email: ""
     });
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -24,40 +32,31 @@ const ClientProfile = () => {
     const [influencersError, setInfluencersError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const token = localStorage.getItem('token');
+    const clientId = getClientIdFromToken(token);
+
+    const getInfluencerMetric = (influencer, metricName) =>
+        influencer[metricName] ?? influencer.score?.[metricName] ?? influencer.Score?.[metricName];
+
+    const getInfluencerName = (influencer) =>
+        influencer.fullName ||
+        influencer.userName ||
+        influencer.channelName ||
+        influencer.platform ||
+        `Influencer #${influencer.id}`;
 
     useEffect(() => {
-        const getClientInfluencers = (clientData) => {
-            const possibleInfluencerLists = [
-                clientData.influencers,
-                clientData.interactedInfluencers,
-                clientData.clientInfluencers
-            ];
-
-            const existingList = possibleInfluencerLists.find(Array.isArray);
-
-            if (!existingList) {
-                return [];
-            }
-
-            return existingList
-                .map((item) => item.influencer || item)
-                .filter(Boolean);
-        };
-
-        const loadInfluencers = async (clientData) => {
+        const loadInfluencers = async () => {
             setIsInfluencersLoading(true);
             setInfluencersError("");
 
-            const clientInfluencers = getClientInfluencers(clientData);
-
-            if (clientInfluencers.length > 0) {
-                setInfluencers(clientInfluencers);
+            if (!clientId) {
+                setInfluencersError("Не вдалося визначити ID клієнта з токена.");
                 setIsInfluencersLoading(false);
                 return;
             }
 
             try {
-                const response = await fetch('https://localhost:7237/api/Influencer', {
+                const response = await fetch(`${CLIENT_INFLUENCERS_API_URL}/${encodeURIComponent(clientId)}`, {
                     method: 'GET',
                     headers: {
                         'accept': 'text/plain',
@@ -65,15 +64,21 @@ const ClientProfile = () => {
                     }
                 });
 
+                const responseText = await response.text();
+
                 if (response.ok) {
-                    const influencersData = await response.json();
-                    setInfluencers(Array.isArray(influencersData) ? influencersData : []);
+                    const influencersData = parseJsonResponse(responseText, []);
+                    const influencersList = Array.isArray(influencersData)
+                        ? influencersData
+                        : influencersData?.$values || influencersData?.items || influencersData?.data || [];
+
+                    setInfluencers(Array.isArray(influencersList) ? influencersList : []);
                 } else {
-                    setInfluencersError("Could not load influencers");
+                    setInfluencersError(responseText || "Не вдалося завантажити інфлюенсерів");
                 }
             } catch (error) {
                 console.error('Error:', error);
-                setInfluencersError("Error loading influencers");
+                setInfluencersError(error.message || "Помилка завантаження інфлюенсерів");
             } finally {
                 setIsInfluencersLoading(false);
             }
@@ -85,44 +90,53 @@ const ClientProfile = () => {
                 return;
             }
 
+            if (!clientId) {
+                setError("Не вдалося визначити ID клієнта з токена.");
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const response = await fetch('https://localhost:7237/api/Client', {
+                const response = await fetch(`${CLIENT_API_URL}/${encodeURIComponent(clientId)}`, {
                     method: 'GET',
                     headers: {
-                        'accept': '*/*',
-                        'Authorization': `Bearer ${token}`
+                        'accept': 'text/plain',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                     }
                 });
 
+                const responseText = await response.text();
+
                 if (response.ok) {
-                    const clientData = await response.json();
+                    const clientData = parseJsonResponse(responseText, null);
+
+                    if (!clientData || typeof clientData !== 'object') {
+                        throw new Error("Сервер не повернув дані профілю.");
+                    }
+
                     setClient(clientData);
                     setFormData({
                         brand: clientData.brand || "",
-                        email: clientData.email || "",
-                        budget: clientData.budget ?? "",
-                        targetCountry: clientData.targetCountry || "",
-                        targetAudience: clientData.targetAudience || "",
-                        goals: clientData.goals || ""
+                        email: clientData.email || ""
                     });
-                    await loadInfluencers(clientData);
+                    await loadInfluencers();
                 } else {
-                    setError("Could not load profile data");
+                    setError(responseText || "Не вдалося завантажити дані профілю");
                 }
             } catch (error) {
                 console.error('Error:', error);
-                setError("Error loading profile data");
+                setError(error.message || "Помилка завантаження даних профілю");
             } finally {
                 setIsLoading(false);
             }
         };
 
         loadClient();
-    }, [navigate, token]);
+    }, [clientId, navigate, token]);
 
     const formatValue = (value) => {
         if (value === null || value === undefined || value === "") {
-            return "Not specified";
+            return "Не вказано";
         }
 
         return value;
@@ -130,18 +144,18 @@ const ClientProfile = () => {
 
     const formatNumber = (value) => {
         if (value === null || value === undefined || value === "") {
-            return "Not specified";
+            return "Не вказано";
         }
 
-        return Number(value).toLocaleString();
+        return Number(value).toLocaleString('uk-UA');
     };
 
     const formatDate = (date) => {
-        if (!date || date.startsWith("0001-01-01")) {
-            return "Not specified";
+        if (!date || String(date).startsWith("0001-01-01")) {
+            return "Не вказано";
         }
 
-        return new Date(date).toLocaleDateString();
+        return new Date(date).toLocaleDateString('uk-UA');
     };
 
     const handleInputChange = (event) => {
@@ -161,14 +175,17 @@ const ClientProfile = () => {
     const cancelEditing = () => {
         setFormData({
             brand: client.brand || "",
-            email: client.email || "",
-            budget: client.budget ?? "",
-            targetCountry: client.targetCountry || "",
-            targetAudience: client.targetAudience || "",
-            goals: client.goals || ""
+            email: client.email || ""
         });
         setSuccessMessage("");
         setIsEditing(false);
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        setClient(null);
+        setInfluencers([]);
+        navigate('/login');
     };
 
     const saveSettings = async (event) => {
@@ -180,11 +197,7 @@ const ClientProfile = () => {
         const payload = {
             ...client,
             brand: formData.brand.trim(),
-            email: formData.email.trim(),
-            budget: formData.budget === "" ? null : Number(formData.budget),
-            targetCountry: formData.targetCountry.trim(),
-            targetAudience: formData.targetAudience.trim(),
-            goals: formData.goals.trim()
+            email: formData.email.trim()
         };
 
         try {
@@ -206,21 +219,17 @@ const ClientProfile = () => {
                 setClient(updatedClient);
                 setFormData({
                     brand: updatedClient.brand || "",
-                    email: updatedClient.email || "",
-                    budget: updatedClient.budget ?? "",
-                    targetCountry: updatedClient.targetCountry || "",
-                    targetAudience: updatedClient.targetAudience || "",
-                    goals: updatedClient.goals || ""
+                    email: updatedClient.email || ""
                 });
                 setIsEditing(false);
-                setSuccessMessage("Settings updated successfully");
+                setSuccessMessage("Налаштування успішно оновлено");
             } else {
                 const errorMessage = await response.text();
-                setError(errorMessage || "Could not update settings");
+                setError(errorMessage || "Не вдалося оновити налаштування");
             }
         } catch (error) {
             console.error('Error:', error);
-            setError("Error updating settings");
+            setError("Помилка оновлення налаштувань");
         } finally {
             setIsSaving(false);
         }
@@ -232,8 +241,8 @@ const ClientProfile = () => {
             <main className="profile-page">
                 <div className="profile-layout">
                     <section className="profile-panel profile-settings-panel">
-                        <button className="back-button" type="button" onClick={() => navigate('/')}>
-                            Back to home
+                        <button className="back-button" type="button" onClick={() => navigate('/') }>
+                            На головну
                         </button>
 
                         <div className="profile-header">
@@ -241,48 +250,39 @@ const ClientProfile = () => {
                                 {(client?.brand || "U").charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <h1>{client?.brand || "Profile"}</h1>
-                                <p>{client?.email || "Client information"}</p>
+                                <h1>{client?.brand || "Профіль"}</h1>
+                                <p>{client?.email || "Інформація клієнта"}</p>
                             </div>
                         </div>
 
-                        {isLoading && <div className="profile-message">Loading profile...</div>}
+                        {isLoading && <div className="profile-message">Завантаження профілю...</div>}
                         {error && <div className="profile-message profile-error">{error}</div>}
                         {successMessage && <div className="profile-message profile-success">{successMessage}</div>}
                         {!isLoading && client && !isEditing &&
                             <>
                                 <div className="profile-actions">
                                     <button className="profile-button" type="button" onClick={startEditing}>
-                                        Edit settings
+                                        Редагувати налаштування
+                                    </button>
+                                    <button className="profile-button profile-button-danger" type="button" onClick={handleLogout}>
+                                        Розлогінитись
                                     </button>
                                 </div>
                                 <div className="profile-details">
                                     <div>
-                                        <span>Brand</span>
+                                        <span>Бренд</span>
                                         <strong>{formatValue(client.brand)}</strong>
                                     </div>
                                     <div>
-                                        <span>Email</span>
+                                        <span>Електронна пошта</span>
                                         <strong>{formatValue(client.email)}</strong>
                                     </div>
                                     <div>
-                                        <span>Budget</span>
-                                        <strong>{formatValue(client.budget)}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Target country</span>
+                                        <span>Країна</span>
                                         <strong>{formatValue(client.targetCountry)}</strong>
                                     </div>
                                     <div>
-                                        <span>Target audience</span>
-                                        <strong>{formatValue(client.targetAudience)}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Goals</span>
-                                        <strong>{formatValue(client.goals)}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Created at</span>
+                                        <span>Створено</span>
                                         <strong>{formatDate(client.createdAt)}</strong>
                                     </div>
                                 </div>
@@ -291,35 +291,19 @@ const ClientProfile = () => {
                         {!isLoading && client && isEditing &&
                             <form className="profile-edit-form" onSubmit={saveSettings}>
                                 <label>
-                                    Brand
+                                    Бренд
                                     <input name="brand" type="text" value={formData.brand} onChange={handleInputChange} required />
                                 </label>
                                 <label>
-                                    Email
+                                    Електронна пошта
                                     <input name="email" type="email" value={formData.email} onChange={handleInputChange} required />
-                                </label>
-                                <label>
-                                    Budget
-                                    <input name="budget" type="number" min="0" value={formData.budget} onChange={handleInputChange} />
-                                </label>
-                                <label>
-                                    Target country
-                                    <input name="targetCountry" type="text" value={formData.targetCountry} onChange={handleInputChange} />
-                                </label>
-                                <label>
-                                    Target audience
-                                    <input name="targetAudience" type="text" value={formData.targetAudience} onChange={handleInputChange} />
-                                </label>
-                                <label className="profile-full-field">
-                                    Goals
-                                    <textarea name="goals" value={formData.goals} onChange={handleInputChange} />
                                 </label>
                                 <div className="profile-actions profile-full-field">
                                     <button className="profile-button" type="submit" disabled={isSaving}>
-                                        {isSaving ? "Saving..." : "Save"}
+                                        {isSaving ? "Збереження..." : "Зберегти"}
                                     </button>
                                     <button className="profile-button profile-button-secondary" type="button" onClick={cancelEditing} disabled={isSaving}>
-                                        Cancel
+                                        Скасувати
                                     </button>
                                 </div>
                             </form>
@@ -329,16 +313,16 @@ const ClientProfile = () => {
                         <section className="profile-panel profile-influencers-panel">
                             <div className="profile-section-header">
                                 <div>
-                                    <span>Connections</span>
-                                    <h2>Available influencers</h2>
+                                    <span>Звʼязки</span>
+                                    <h2>Доступні інфлюенсери</h2>
                                 </div>
                                 <strong>{influencers.length}</strong>
                             </div>
 
-                            {isInfluencersLoading && <div className="profile-message">Loading influencers...</div>}
+                            {isInfluencersLoading && <div className="profile-message">Завантаження інфлюенсерів...</div>}
                             {influencersError && <div className="profile-message profile-error">{influencersError}</div>}
                             {!isInfluencersLoading && !influencersError && influencers.length === 0 &&
-                                <div className="profile-empty-state">No influencers yet.</div>
+                                <div className="profile-empty-state">Інфлюенсерів поки немає.</div>
                             }
                             {!isInfluencersLoading && influencers.length > 0 &&
                                 <div className="influencer-grid">
@@ -346,10 +330,10 @@ const ClientProfile = () => {
                                         <article className="influencer-card" key={influencer.id || influencer.userName}>
                                             <div className="influencer-card-header">
                                                 <div className="influencer-avatar">
-                                                    {(influencer.fullName || influencer.userName || "I").charAt(0).toUpperCase()}
+                                                    {(getInfluencerName(influencer) || "I").charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <h3>{formatValue(influencer.fullName || influencer.userName)}</h3>
+                                                    <h3>{formatValue(getInfluencerName(influencer))}</h3>
                                                     <p>{influencer.userName ? `@${influencer.userName}` : formatValue(influencer.platform)}</p>
                                                 </div>
                                             </div>
@@ -358,33 +342,35 @@ const ClientProfile = () => {
                                                 <span>{formatValue(influencer.country)}</span>
                                                 <span>{formatValue(influencer.language || influencer.lenguage)}</span>
                                             </div>
-                                            {influencer.bio &&
-                                                <p className="influencer-bio">{influencer.bio}</p>
-                                            }
+                                                {(influencer.bio || influencer.description) &&
+                                                    <p className="influencer-bio">{influencer.bio || influencer.description}</p>
+                                                }
+                                                {influencer.aiReview && (
+                                                    <div className="influencer-ai-review">
+                                                        <strong>AI аналіз</strong>
+                                                        <p>{influencer.aiReview}</p>
+                                                    </div>
+                                                )}
                                             <div className="influencer-stats">
                                                 <div>
-                                                    <span>Followers</span>
+                                                    <span>Підписники</span>
                                                     <strong>{formatNumber(influencer.followersCount)}</strong>
                                                 </div>
                                                 <div>
-                                                    <span>Avg views</span>
-                                                    <strong>{formatNumber(influencer.avgViews)}</strong>
+                                                    <span>Сер. перегляди</span>
+                                                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgViews'))}</strong>
                                                 </div>
                                                 <div>
-                                                    <span>Avg likes</span>
-                                                    <strong>{formatNumber(influencer.avgLikes)}</strong>
+                                                    <span>Сер. лайки</span>
+                                                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgLikes'))}</strong>
                                                 </div>
                                                 <div>
-                                                    <span>Comments</span>
-                                                    <strong>{formatNumber(influencer.avgComments)}</strong>
+                                                    <span>Коментарі</span>
+                                                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgComments'))}</strong>
                                                 </div>
                                                 <div>
-                                                    <span>Posts</span>
+                                                    <span>Пости</span>
                                                     <strong>{formatNumber(influencer.postsCount)}</strong>
-                                                </div>
-                                                <div>
-                                                    <span>Following</span>
-                                                    <strong>{formatNumber(influencer.followingCount)}</strong>
                                                 </div>
                                             </div>
                                         </article>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
@@ -6,16 +6,48 @@ import '../App.css';
 import {
   formatNumber,
   formatPercent,
+  getClientIdFromToken,
   getChannelKey,
-  readRecommendedInfluencers,
-  readSavedInfluencers,
-  SAVED_INFLUENCERS_STORAGE_KEY,
 } from '../utils/influencers';
 
-const getChannelImageUrl = (channel) => {
-  const imageUrl = channel.AvatarUrl;
+const API_ORIGIN = 'https://localhost:7237';
 
-  return typeof imageUrl === 'string' ? imageUrl.replace(/^http:\/\//, 'https://') : '';
+const getChannelImageUrl = (channel) => {
+  const imageUrl =
+    channel.avatarUrl ||
+    channel.AvatarUrl ||
+    channel.avatar ||
+    channel.Avatar ||
+    channel.imageUrl ||
+    channel.ImageUrl ||
+    channel.photoUrl ||
+    channel.PhotoUrl ||
+    channel.profileImage ||
+    channel.ProfileImage ||
+    channel.pictureUrl ||
+    channel.PictureUrl ||
+    channel.thumbnailUrl ||
+    channel.ThumbnailUrl;
+
+  if (typeof imageUrl !== 'string' || !imageUrl.trim()) {
+    return '';
+  }
+
+  const normalizedUrl = imageUrl.trim();
+
+  if (normalizedUrl.startsWith('data:') || normalizedUrl.startsWith('blob:')) {
+    return normalizedUrl;
+  }
+
+  if (normalizedUrl.startsWith('//')) {
+    return `https:${normalizedUrl}`;
+  }
+
+  if (/^https?:\/\//i.test(normalizedUrl)) {
+    return normalizedUrl.replace(/^http:\/\//i, 'https://');
+  }
+
+  return new URL(normalizedUrl, API_ORIGIN).toString();
 };
 
 function ChannelAvatar({ channel }) {
@@ -34,17 +66,8 @@ function InfluencerRecommendations() {
   const location = useLocation();
   const navigate = useNavigate();
   const channelsFromState = Array.isArray(location.state?.channels) ? location.state.channels : [];
-  const channels = channelsFromState.length > 0 ? channelsFromState : readRecommendedInfluencers();
-  const savedInfluencers = useMemo(() => readSavedInfluencers(), []);
-  const savedInfluencerKeys = useMemo(
-    () => new Set(savedInfluencers.map(getChannelKey).filter(Boolean)),
-    [savedInfluencers]
-  );
-  const [selectedInfluencerKeys, setSelectedInfluencerKeys] = useState(() =>
-    channels
-      .map(getChannelKey)
-      .filter((channelKey) => channelKey && savedInfluencerKeys.has(channelKey))
-  );
+  const [channels] = useState(channelsFromState);
+  const [selectedInfluencerKeys, setSelectedInfluencerKeys] = useState([]);
   const [saveMessage, setSaveMessage] = useState('');
   const [activeChannel, setActiveChannel] = useState(null);
 
@@ -83,17 +106,76 @@ function InfluencerRecommendations() {
     );
   };
 
-  const saveSelectedInfluencers = () => {
+  const saveSelectedInfluencers = async () => {
     const selectedKeySet = new Set(selectedInfluencerKeys);
     const selectedInfluencers = channels.filter((channel) => selectedKeySet.has(getChannelKey(channel)));
-    const savedKeySet = new Set(savedInfluencers.map(getChannelKey).filter(Boolean));
-    const mergedInfluencers = [
-      ...savedInfluencers,
-      ...selectedInfluencers.filter((channel) => !savedKeySet.has(getChannelKey(channel))),
-    ];
 
-    localStorage.setItem(SAVED_INFLUENCERS_STORAGE_KEY, JSON.stringify(mergedInfluencers));
-    setSaveMessage(`Збережено інфлюенсерів: ${selectedInfluencers.length}.`);
+    if (selectedInfluencers.length === 0) {
+      setSaveMessage('Оберіть хоча б одного інфлюенсера для збереження.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    const clientId = getClientIdFromToken(token);
+    const API_ADD_URL = 'https://localhost:7237/api/Influencer/add-influencer';
+
+    if (!clientId) {
+      setSaveMessage('Не вдалося визначити ID клієнта з токена. Увійдіть у профіль ще раз.');
+      return;
+    }
+
+    let serverSaved = 0;
+    const failedMessages = [];
+
+    for (const influencer of selectedInfluencers) {
+      try {
+        const payload = {
+          score: influencer.score ?? influencer.Score ?? null,
+          channelName: influencer.channelName || influencer.name || influencer.ChannelName || '',
+          channelId: influencer.channelId || influencer.ChannelId || '',
+          channelUrl: influencer.channelUrl || influencer.ChannelUrl || '',
+          countryCode: influencer.countryCode || influencer.country || influencer.CountryCode || '',
+          language: influencer.language || influencer.Language || '',
+          description: influencer.description || influencer.Description || '',
+          avatarUrl: getChannelImageUrl(influencer),
+          followersCount: influencer.followersCount ?? influencer.followers ?? null,
+          engagementRate: influencer.engagementRate ?? influencer.EngagementRate ?? null,
+          videoCount: influencer.videoCount ?? influencer.VideoCount ?? influencer.postsCount ?? null,
+          postPerDay: influencer.postPerDay ?? influencer.PostPerDay ?? null,
+          avgLike: influencer.avgLike ?? influencer.AvgLike ?? influencer.avgLikes ?? null,
+          avgView: influencer.avgView ?? influencer.AvgView ?? influencer.avgViews ?? null,
+          avgComment: influencer.avgComment ?? influencer.AvgComment ?? influencer.avgComments ?? null,
+          aiReview: influencer.aiReview ?? null,
+        };
+
+        const response = await fetch(`${API_ADD_URL}/${encodeURIComponent(clientId)}`, {
+          method: 'POST',
+          headers: {
+            accept: 'text/plain',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const responseText = await response.text();
+
+        if (response.ok) {
+          serverSaved += 1;
+        } else {
+          failedMessages.push(`${payload.channelName || payload.channelId || 'Інфлюенсер'}: ${responseText || response.status}`);
+        }
+      } catch (err) {
+        failedMessages.push(`${influencer.channelName || influencer.name || 'Інфлюенсер'}: ${err.message}`);
+      }
+    }
+
+    if (failedMessages.length > 0) {
+      setSaveMessage(`На сервері збережено: ${serverSaved}. Не збережено: ${failedMessages.join('; ')}`);
+      return;
+    }
+
+    setSaveMessage(`На сервері збережено інфлюенсерів: ${serverSaved}.`);
   };
 
   const handleCardKeyDown = (event, channel) => {
@@ -136,7 +218,7 @@ function InfluencerRecommendations() {
         <strong>{formatNumber(channel.postPerDay)}</strong>
       </div>
       <div>
-        <span>Engagement</span>
+        <span>Залучення</span>
         <strong>{formatPercent(channel.engagementRate)}</strong>
       </div>
     </div>

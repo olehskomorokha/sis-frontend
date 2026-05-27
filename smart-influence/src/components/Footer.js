@@ -12,14 +12,14 @@ function Footer({
 
   return (
     <footer className="footer">
-      <p>© {new Date().getFullYear()} Smart Influence. All rights reserved.</p>
+      <p>© {new Date().getFullYear()} Smart Influence. Усі права захищено.</p>
       {showPrivacyButton && (
         <button
           className="footer-link-button"
           type="button"
           onClick={openPrivacyPolicy}
         >
-          Privacy Policy
+          Політика конфіденційності
         </button>
       )}
       {showDataDeletionButton && (
@@ -28,7 +28,7 @@ function Footer({
           type="button"
           onClick={openDataDeletion}
         >
-          Data Deletion
+          Видалення даних
         </button>
       )}
     </footer>

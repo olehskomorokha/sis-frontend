@@ -5,7 +5,6 @@ import Footer from './Footer';
 import '../App.css';
 import {
   parseChannelsResponse,
-  RECOMMENDED_INFLUENCERS_STORAGE_KEY,
 } from '../utils/influencers';
 
 const TAGS_API_URL = 'https://localhost:7237/api/Elasticsearch/bloggerTags';
@@ -76,7 +75,7 @@ function InfluencerSelection() {
         });
 
         if (!response.ok) {
-          throw new Error('Could not load tags');
+          throw new Error('Не вдалося завантажити теги');
         }
 
         const responseText = await response.text();
@@ -130,7 +129,7 @@ function InfluencerSelection() {
 
       if (!response.ok) {
         const errorMessage = await response.text();
-        throw new Error(errorMessage || 'Could not run analysis');
+        throw new Error(errorMessage || 'Не вдалося запустити аналіз');
       }
 
       const data = await response.json();
@@ -141,7 +140,6 @@ function InfluencerSelection() {
         return;
       }
 
-      sessionStorage.setItem(RECOMMENDED_INFLUENCERS_STORAGE_KEY, JSON.stringify(recommendedChannels));
       navigate('/influencer-recommendations', { state: { channels: recommendedChannels } });
     } catch (error) {
       console.error('Recommendation error:', error);
@@ -192,11 +190,11 @@ function InfluencerSelection() {
 
       <main className="main-content selection-content">
         <section className="card">
-          <p className="eyebrow">Підбір інфлуенсерів</p>
-          <h2>Пошук потенційних інфлуенсерів</h2>
+          <p className="eyebrow">Підбір інфлюенсерів</p>
+          <h2>Пошук потенційних інфлюенсерів</h2>
           <p>
             Введіть нішу, бренд або ключову тему, а потім уточніть параметри аудиторії,
-            щоб система могла сформувати релевантний список кандидатів.
+            щоб система сформувала релевантний список кандидатів.
           </p>
 
           <label className="full-width">
@@ -211,7 +209,7 @@ function InfluencerSelection() {
                   i
                 </button>
                 <span className="tooltip-content" role="tooltip">
-                  Опишіть продукт або послугу, для якої потрібно підібрати інфлуенсерів:
+                  Опишіть продукт або послугу, для якої потрібно підібрати інфлюенсерів:
                   нішу, цільову аудиторію, особливості бренду та тему рекламної кампанії.
                 </span>
               </span>
@@ -228,9 +226,9 @@ function InfluencerSelection() {
             <label>
               Країна
               <select value={country} onChange={(event) => setCountry(event.target.value)}>
-                {COUNTRIES.map((country) => (
-                  <option value={country.value} key={country.value}>
-                    {country.label}
+                {COUNTRIES.map((countryOption) => (
+                  <option value={countryOption.value} key={countryOption.value}>
+                    {countryOption.label}
                   </option>
                 ))}
               </select>
@@ -244,7 +242,7 @@ function InfluencerSelection() {
                   type="text"
                   value={tagSearch}
                   disabled={isTagSearchDisabled}
-                  placeholder={areTagsLoading ? 'Завантаження тегів...' : 'Beauty, Health, Cars, etc.'}
+                  placeholder={areTagsLoading ? 'Завантаження тегів...' : 'Краса, здоровʼя, авто тощо'}
                   autoComplete="off"
                   role="combobox"
                   aria-autocomplete="list"
@@ -338,7 +336,6 @@ function InfluencerSelection() {
             {analysisMessage && <p className="form-message">{analysisMessage}</p>}
           </div>
         </section>
-
       </main>
 
       <Footer />

@@ -1,6 +1,3 @@
-export const SAVED_INFLUENCERS_STORAGE_KEY = 'smartInfluenceSavedInfluencers';
-export const RECOMMENDED_INFLUENCERS_STORAGE_KEY = 'smartInfluenceRecommendedInfluencers';
-
 export const parseChannelsResponse = (data) => {
   const channels = Array.isArray(data)
     ? data
@@ -9,7 +6,41 @@ export const parseChannelsResponse = (data) => {
   return Array.isArray(channels) ? channels : [];
 };
 
-export const getChannelKey = (channel) => channel.channelUrl || channel.channelName;
+export const getChannelKey = (channel) =>
+  channel.channelUrl || channel.channelName || channel.channelId || channel.ChannelId;
+
+export const getClientIdFromToken = (token) => {
+  const normalizedToken = typeof token === 'string' ? token.trim() : '';
+
+  if (!normalizedToken) {
+    return '';
+  }
+
+  try {
+    const payload = normalizedToken.split('.')[1];
+
+    if (!payload) {
+      return '';
+    }
+
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      '='
+    );
+    const decodedPayload = JSON.parse(atob(paddedPayload));
+
+    return (
+      decodedPayload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+      decodedPayload.nameidentifier ||
+      decodedPayload.nameid ||
+      decodedPayload.sub ||
+      ''
+    );
+  } catch {
+    return '';
+  }
+};
 
 export const formatNumber = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -25,22 +56,4 @@ export const formatPercent = (value) => {
   }
 
   return `${(Number(value) * 100).toFixed(2)}%`;
-};
-
-export const readSavedInfluencers = () => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(SAVED_INFLUENCERS_STORAGE_KEY) || '[]');
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    return [];
-  }
-};
-
-export const readRecommendedInfluencers = () => {
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(RECOMMENDED_INFLUENCERS_STORAGE_KEY) || '[]');
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    return [];
-  }
 };
