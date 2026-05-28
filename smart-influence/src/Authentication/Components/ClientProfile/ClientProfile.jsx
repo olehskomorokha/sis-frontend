@@ -6,7 +6,9 @@ import { getClientIdFromToken } from '../../../utils/influencers';
 import './ClientProfile.css';
 
 const CLIENT_API_URL = 'https://localhost:7237/api/Client';
-const CLIENT_INFLUENCERS_API_URL = 'https://localhost:7237/api/Influencer/client';
+const CLIENT_INFLUENCERS_API_URL = 'https://localhost:7237/api/ClientInfluencer';
+const CLIENT_INFLUENCER_API_URL = 'https://localhost:7237/api/ClientInfluencer';
+const AI_REVIEW_API_URL = 'https://localhost:7237/api/Ai/review';
 
 const parseJsonResponse = (responseText, fallbackValue) => {
     if (!responseText.trim()) {
@@ -15,6 +17,20 @@ const parseJsonResponse = (responseText, fallbackValue) => {
 
     return JSON.parse(responseText);
 };
+
+const getChannelIdFromUrl = (channelUrl) => {
+    if (typeof channelUrl !== 'string' || !channelUrl.trim()) {
+        return "";
+    }
+
+    const channelMatch = channelUrl.match(/\/channel\/([^/?#]+)/i);
+    return channelMatch?.[1] || "";
+};
+
+const normalizeInfluencer = (influencer) => ({
+    ...influencer,
+    aiReview: influencer.aiReview ?? influencer.AiReview ?? ""
+});
 
 const ClientProfile = () => {
     const navigate = useNavigate();
@@ -28,6 +44,9 @@ const ClientProfile = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isInfluencersLoading, setIsInfluencersLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [aiReviewLoadingIds, setAiReviewLoadingIds] = useState([]);
+    const [deletingInfluencerIds, setDeletingInfluencerIds] = useState([]);
+    const [activeInfluencer, setActiveInfluencer] = useState(null);
     const [error, setError] = useState("");
     const [influencersError, setInfluencersError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
@@ -35,7 +54,27 @@ const ClientProfile = () => {
     const clientId = getClientIdFromToken(token);
 
     const getInfluencerMetric = (influencer, metricName) =>
-        influencer[metricName] ?? influencer.score?.[metricName] ?? influencer.Score?.[metricName];
+        influencer.influencerScore?.[metricName] ??
+        influencer.InfluencerScore?.[metricName] ??
+        influencer.score?.[metricName] ??
+        influencer.Score?.[metricName] ??
+        influencer[metricName];
+
+    const getInfluencerPostCount = (influencer) =>
+        influencer.influencerScore?.postCount ??
+        influencer.InfluencerScore?.postCount ??
+        influencer.influencerScore?.PostCount ??
+        influencer.InfluencerScore?.PostCount ??
+        influencer.score?.postCount ??
+        influencer.Score?.postCount ??
+        influencer.score?.PostCount ??
+        influencer.Score?.PostCount ??
+        influencer.postCount ??
+        influencer.PostCount ??
+        influencer.postsCount ??
+        influencer.PostsCount ??
+        influencer.videoCount ??
+        influencer.VideoCount;
 
     const getInfluencerName = (influencer) =>
         influencer.fullName ||
@@ -43,6 +82,91 @@ const ClientProfile = () => {
         influencer.channelName ||
         influencer.platform ||
         `Influencer #${influencer.id}`;
+
+    const getInfluencerAvatarUrl = (influencer) => {
+        const imageUrl =
+            influencer.avatarUrl ||
+            influencer.AvatarUrl ||
+            influencer.avatar ||
+            influencer.Avatar ||
+            influencer.imageUrl ||
+            influencer.ImageUrl ||
+            "";
+
+        if (typeof imageUrl !== 'string' || !imageUrl.trim()) {
+            return "";
+        }
+
+        const normalizedUrl = imageUrl.trim();
+
+        if (normalizedUrl.startsWith('//')) {
+            return `https:${normalizedUrl}`;
+        }
+
+        if (/^https?:\/\//i.test(normalizedUrl)) {
+            return normalizedUrl.replace(/^http:\/\//i, 'https://');
+        }
+
+        return normalizedUrl;
+    };
+
+    const getInfluencerChannelUrl = (influencer) =>
+        influencer.channelUrl || influencer.ChannelUrl || "";
+
+    const getAiReviewText = (influencer) =>
+        typeof influencer.aiReview === 'string'
+            ? influencer.aiReview.trim()
+            : typeof influencer.AiReview === 'string'
+                ? influencer.AiReview.trim()
+                : "";
+
+    const hasAiReview = (influencer) => Boolean(getAiReviewText(influencer));
+
+    const getInfluencerUpdateId = (influencer) => {
+        const influencerId =
+            influencer.influenceId ??
+            influencer.InfluenceId ??
+            influencer.influencer?.id ??
+            influencer.Influencer?.id ??
+            influencer.influencer?.Id ??
+            influencer.Influencer?.Id ??
+            influencer.influencerDbId ??
+            influencer.InfluencerDbId ??
+            influencer.influencerNumericId ??
+            influencer.InfluencerNumericId ??
+            influencer.influencerTableId ??
+            influencer.InfluencerTableId ??
+            influencer.influencerId ??
+            influencer.InfluencerId;
+
+        if (Number.isInteger(influencerId)) {
+            return influencerId;
+        }
+
+        if (typeof influencerId === 'string' && /^\d+$/.test(influencerId)) {
+            return influencerId;
+        }
+
+        return "";
+    };
+
+    const getInfluencerChannelId = (influencer) =>
+        influencer.channelId ||
+        influencer.ChannelId ||
+        (typeof influencer.influencerId === 'string' && !/^\d+$/.test(influencer.influencerId)
+            ? influencer.influencerId
+            : "") ||
+        (typeof influencer.InfluencerId === 'string' && !/^\d+$/.test(influencer.InfluencerId)
+            ? influencer.InfluencerId
+            : "") ||
+        getChannelIdFromUrl(getInfluencerChannelUrl(influencer));
+
+    const handleInfluencerCardKeyDown = (event, influencer) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setActiveInfluencer(influencer);
+        }
+    };
 
     useEffect(() => {
         const loadInfluencers = async () => {
@@ -72,7 +196,7 @@ const ClientProfile = () => {
                         ? influencersData
                         : influencersData?.$values || influencersData?.items || influencersData?.data || [];
 
-                    setInfluencers(Array.isArray(influencersList) ? influencersList : []);
+                    setInfluencers(Array.isArray(influencersList) ? influencersList.map(normalizeInfluencer) : []);
                 } else {
                     setInfluencersError(responseText || "Не вдалося завантажити інфлюенсерів");
                 }
@@ -134,6 +258,26 @@ const ClientProfile = () => {
         loadClient();
     }, [clientId, navigate, token]);
 
+    useEffect(() => {
+        if (!activeInfluencer) {
+            return undefined;
+        }
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setActiveInfluencer(null);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        document.body.classList.add('modal-open');
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.body.classList.remove('modal-open');
+        };
+    }, [activeInfluencer]);
+
     const formatValue = (value) => {
         if (value === null || value === undefined || value === "") {
             return "Не вказано";
@@ -150,6 +294,16 @@ const ClientProfile = () => {
         return Number(value).toLocaleString('uk-UA');
     };
 
+    const formatPercent = (value) => {
+        if (value === null || value === undefined || value === "") {
+            return "Не вказано";
+        }
+
+        return `${(Number(value) * 100).toLocaleString('uk-UA', {
+            maximumFractionDigits: 2
+        })}%`;
+    };
+
     const formatDate = (date) => {
         if (!date || String(date).startsWith("0001-01-01")) {
             return "Не вказано";
@@ -157,6 +311,38 @@ const ClientProfile = () => {
 
         return new Date(date).toLocaleDateString('uk-UA');
     };
+
+    const renderInfluencerStats = (influencer) => (
+        <div className="influencer-stats-section">
+            <p className="influencer-stats-note">Статистика за останніх пів року</p>
+            <div className="influencer-stats">
+                <div>
+                    <span>Підписники</span>
+                    <strong>{formatNumber(influencer.followersCount)}</strong>
+                </div>
+                <div>
+                    <span>Перегляди</span>
+                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgViews'))}</strong>
+                </div>
+                <div>
+                    <span>Лайки</span>
+                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgLikes'))}</strong>
+                </div>
+                <div>
+                    <span>Коментарі</span>
+                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgComments'))}</strong>
+                </div>
+                <div>
+                    <span>Залучення</span>
+                    <strong>{formatPercent(getInfluencerMetric(influencer, 'engagementRate'))}</strong>
+                </div>
+                <div>
+                    <span>Пости</span>
+                    <strong>{formatNumber(getInfluencerPostCount(influencer))}</strong>
+                </div>
+            </div>
+        </div>
+    );
 
     const handleInputChange = (event) => {
         const { name, value } = event.target;
@@ -186,6 +372,118 @@ const ClientProfile = () => {
         setClient(null);
         setInfluencers([]);
         navigate('/login');
+    };
+
+    const handleAiReview = async (influencer) => {
+        const channelId = getInfluencerChannelId(influencer);
+        const influencerUpdateId = getInfluencerUpdateId(influencer);
+
+        if (!channelId) {
+            setInfluencersError("Не вдалося визначити channelId інфлюенсера для AI аналізу.");
+            return;
+        }
+
+        if (!influencerUpdateId) {
+            setInfluencersError("Не вдалося визначити influencerId для збереження AI аналізу.");
+            return;
+        }
+
+        setInfluencersError("");
+        setAiReviewLoadingIds((currentIds) => [...currentIds, channelId]);
+
+        try {
+            const response = await fetch(`${AI_REVIEW_API_URL}/${encodeURIComponent(channelId)}`, {
+                method: 'GET',
+                headers: {
+                    'accept': 'text/plain',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+            const responseText = await response.text();
+
+            if (!response.ok) {
+                throw new Error(responseText || "Не вдалося отримати AI аналіз.");
+            }
+
+            const aiReview = responseText.trim();
+
+            const updateUrl = `${CLIENT_INFLUENCER_API_URL}/update/${encodeURIComponent(influencerUpdateId)}`;
+            const saveResponse = await fetch(updateUrl, {
+                method: 'PUT',
+                headers: {
+                    'accept': '*/*',
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ aiReview })
+            });
+
+            if (!saveResponse.ok) {
+                const saveErrorMessage = await saveResponse.text();
+                throw new Error(
+                    `AI аналіз отримано, але не вдалося зберегти його в картку. URL: ${updateUrl}. Відповідь сервера: ${saveErrorMessage || saveResponse.status}`
+                );
+            }
+
+            setInfluencers((currentInfluencers) =>
+                currentInfluencers.map((currentInfluencer) =>
+                    getInfluencerUpdateId(currentInfluencer) === influencerUpdateId
+                        ? { ...currentInfluencer, aiReview }
+                        : currentInfluencer
+                )
+            );
+            setActiveInfluencer((currentInfluencer) =>
+                currentInfluencer && getInfluencerUpdateId(currentInfluencer) === influencerUpdateId
+                    ? { ...currentInfluencer, aiReview }
+                    : currentInfluencer
+            );
+        } catch (error) {
+            console.error('Error:', error);
+            setInfluencersError(error.message || "Помилка AI аналізу.");
+        } finally {
+            setAiReviewLoadingIds((currentIds) => currentIds.filter((currentId) => currentId !== channelId));
+        }
+    };
+
+    const handleDeleteInfluencer = async (influencer) => {
+        const influencerDeleteId = getInfluencerUpdateId(influencer);
+
+        if (!influencerDeleteId) {
+            setInfluencersError("Не вдалося визначити influencerId для видалення інфлюенсера.");
+            return;
+        }
+
+        setInfluencersError("");
+        setDeletingInfluencerIds((currentIds) => [...currentIds, influencerDeleteId]);
+
+        try {
+            const response = await fetch(`${CLIENT_INFLUENCER_API_URL}/delete/${encodeURIComponent(influencerDeleteId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'accept': '*/*',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                throw new Error(errorMessage || "Не вдалося видалити картку інфлюенсера.");
+            }
+
+            setInfluencers((currentInfluencers) =>
+                currentInfluencers.filter((currentInfluencer) =>
+                    getInfluencerUpdateId(currentInfluencer) !== influencerDeleteId
+                )
+            );
+            setActiveInfluencer(null);
+        } catch (error) {
+            console.error('Error:', error);
+            setInfluencersError(error.message || "Помилка видалення інфлюенсера.");
+        } finally {
+            setDeletingInfluencerIds((currentIds) =>
+                currentIds.filter((currentId) => currentId !== influencerDeleteId)
+            );
+        }
     };
 
     const saveSettings = async (event) => {
@@ -260,14 +558,6 @@ const ClientProfile = () => {
                         {successMessage && <div className="profile-message profile-success">{successMessage}</div>}
                         {!isLoading && client && !isEditing &&
                             <>
-                                <div className="profile-actions">
-                                    <button className="profile-button" type="button" onClick={startEditing}>
-                                        Редагувати налаштування
-                                    </button>
-                                    <button className="profile-button profile-button-danger" type="button" onClick={handleLogout}>
-                                        Розлогінитись
-                                    </button>
-                                </div>
                                 <div className="profile-details">
                                     <div>
                                         <span>Бренд</span>
@@ -278,13 +568,17 @@ const ClientProfile = () => {
                                         <strong>{formatValue(client.email)}</strong>
                                     </div>
                                     <div>
-                                        <span>Країна</span>
-                                        <strong>{formatValue(client.targetCountry)}</strong>
-                                    </div>
-                                    <div>
                                         <span>Створено</span>
                                         <strong>{formatDate(client.createdAt)}</strong>
                                     </div>
+                                </div>
+                                <div className="profile-bottom-actions">
+                                    <button className="profile-button" type="button" onClick={startEditing}>
+                                        Редагувати
+                                    </button>
+                                    <button className="profile-button profile-button-muted profile-logout-button" type="button" onClick={handleLogout}>
+                                        Розлогінитись
+                                    </button>
                                 </div>
                             </>
                         }
@@ -327,52 +621,76 @@ const ClientProfile = () => {
                             {!isInfluencersLoading && influencers.length > 0 &&
                                 <div className="influencer-grid">
                                     {influencers.map((influencer) => (
-                                        <article className="influencer-card" key={influencer.id || influencer.userName}>
+                                        <article
+                                            className="influencer-card"
+                                            key={influencer.id || influencer.userName}
+                                            role="button"
+                                            tabIndex="0"
+                                            onClick={() => setActiveInfluencer(influencer)}
+                                            onKeyDown={(event) => handleInfluencerCardKeyDown(event, influencer)}
+                                        >
                                             <div className="influencer-card-header">
                                                 <div className="influencer-avatar">
-                                                    {(getInfluencerName(influencer) || "I").charAt(0).toUpperCase()}
+                                                    {getInfluencerAvatarUrl(influencer) ? (
+                                                        <img
+                                                            src={getInfluencerAvatarUrl(influencer)}
+                                                            alt={getInfluencerName(influencer)}
+                                                            referrerPolicy="no-referrer"
+                                                            onError={(event) => {
+                                                                event.currentTarget.parentElement.textContent =
+                                                                    (getInfluencerName(influencer) || "I").charAt(0).toUpperCase();
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        (getInfluencerName(influencer) || "I").charAt(0).toUpperCase()
+                                                    )}
                                                 </div>
                                                 <div>
-                                                    <h3>{formatValue(getInfluencerName(influencer))}</h3>
-                                                    <p>{influencer.userName ? `@${influencer.userName}` : formatValue(influencer.platform)}</p>
+                                                    {getInfluencerChannelUrl(influencer) ? (
+                                                        <a
+                                                            className="influencer-card-link"
+                                                            href={getInfluencerChannelUrl(influencer)}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            onClick={(event) => event.stopPropagation()}
+                                                        >
+                                                            <h3>{formatValue(getInfluencerName(influencer))}</h3>
+                                                        </a>
+                                                    ) : (
+                                                        <h3>{formatValue(getInfluencerName(influencer))}</h3>
+                                                    )}
+                                                    <p>{formatValue(influencer.platform)}</p>
                                                 </div>
                                             </div>
                                             <div className="influencer-meta">
                                                 <span>{formatValue(influencer.platform)}</span>
                                                 <span>{formatValue(influencer.country)}</span>
-                                                <span>{formatValue(influencer.language || influencer.lenguage)}</span>
                                             </div>
                                                 {(influencer.bio || influencer.description) &&
                                                     <p className="influencer-bio">{influencer.bio || influencer.description}</p>
                                                 }
-                                                {influencer.aiReview && (
+                                                {hasAiReview(influencer) && (
                                                     <div className="influencer-ai-review">
                                                         <strong>AI аналіз</strong>
-                                                        <p>{influencer.aiReview}</p>
-                                                    </div>
-                                                )}
-                                            <div className="influencer-stats">
-                                                <div>
-                                                    <span>Підписники</span>
-                                                    <strong>{formatNumber(influencer.followersCount)}</strong>
+                                                    <p>{getAiReviewText(influencer)}</p>
                                                 </div>
-                                                <div>
-                                                    <span>Сер. перегляди</span>
-                                                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgViews'))}</strong>
+                                            )}
+                                            {renderInfluencerStats(influencer)}
+                                            {!hasAiReview(influencer) && (
+                                                <div className="influencer-card-actions">
+                                                    <button
+                                                        className="profile-button profile-button-secondary"
+                                                        type="button"
+                                                        disabled={aiReviewLoadingIds.includes(getInfluencerChannelId(influencer))}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            handleAiReview(influencer);
+                                                        }}
+                                                    >
+                                                        {aiReviewLoadingIds.includes(getInfluencerChannelId(influencer)) ? "Аналіз..." : "AI аналіз"}
+                                                    </button>
                                                 </div>
-                                                <div>
-                                                    <span>Сер. лайки</span>
-                                                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgLikes'))}</strong>
-                                                </div>
-                                                <div>
-                                                    <span>Коментарі</span>
-                                                    <strong>{formatNumber(getInfluencerMetric(influencer, 'avgComments'))}</strong>
-                                                </div>
-                                                <div>
-                                                    <span>Пости</span>
-                                                    <strong>{formatNumber(influencer.postsCount)}</strong>
-                                                </div>
-                                            </div>
+                                            )}
                                         </article>
                                     ))}
                                 </div>
@@ -381,6 +699,99 @@ const ClientProfile = () => {
                     }
                 </div>
             </main>
+            {activeInfluencer && (
+                <div
+                    className="profile-influencer-modal-overlay"
+                    role="presentation"
+                    onClick={() => setActiveInfluencer(null)}
+                >
+                    <article
+                        className="profile-influencer-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="profile-influencer-modal-title"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <button
+                            className="profile-influencer-modal-close"
+                            type="button"
+                            aria-label="Закрити"
+                            onClick={() => setActiveInfluencer(null)}
+                        >
+                            x
+                        </button>
+
+                        <div className="influencer-card-header">
+                            <div className="influencer-avatar">
+                                {getInfluencerAvatarUrl(activeInfluencer) ? (
+                                    <img
+                                        src={getInfluencerAvatarUrl(activeInfluencer)}
+                                        alt={getInfluencerName(activeInfluencer)}
+                                        referrerPolicy="no-referrer"
+                                    />
+                                ) : (
+                                    (getInfluencerName(activeInfluencer) || "I").charAt(0).toUpperCase()
+                                )}
+                            </div>
+                            <div>
+                                <h3 id="profile-influencer-modal-title">{formatValue(getInfluencerName(activeInfluencer))}</h3>
+                                <p>{formatValue(activeInfluencer.platform)}</p>
+                            </div>
+                        </div>
+
+                        <div className="influencer-meta">
+                            <span>{formatValue(activeInfluencer.platform)}</span>
+                            <span>{formatValue(activeInfluencer.country)}</span>
+                        </div>
+
+                        {(activeInfluencer.bio || activeInfluencer.description) && (
+                            <p className="influencer-bio influencer-bio-full">
+                                {activeInfluencer.bio || activeInfluencer.description}
+                            </p>
+                        )}
+
+                        {hasAiReview(activeInfluencer) && (
+                            <div className="influencer-ai-review influencer-ai-review-full">
+                                <strong>AI аналіз</strong>
+                                <p>{getAiReviewText(activeInfluencer)}</p>
+                            </div>
+                        )}
+
+                        {renderInfluencerStats(activeInfluencer)}
+
+                        <div className="influencer-card-actions">
+                            {getInfluencerChannelUrl(activeInfluencer) && (
+                                <a
+                                    className="profile-button profile-button-secondary"
+                                    href={getInfluencerChannelUrl(activeInfluencer)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Відкрити канал
+                                </a>
+                            )}
+                            {!hasAiReview(activeInfluencer) && (
+                                <button
+                                    className="profile-button"
+                                    type="button"
+                                    disabled={aiReviewLoadingIds.includes(getInfluencerChannelId(activeInfluencer))}
+                                    onClick={() => handleAiReview(activeInfluencer)}
+                                >
+                                    {aiReviewLoadingIds.includes(getInfluencerChannelId(activeInfluencer)) ? "Аналіз..." : "AI аналіз"}
+                                </button>
+                            )}
+                            <button
+                                className="profile-button profile-button-muted-danger profile-modal-delete-button"
+                                type="button"
+                                disabled={deletingInfluencerIds.includes(getInfluencerUpdateId(activeInfluencer))}
+                                onClick={() => handleDeleteInfluencer(activeInfluencer)}
+                            >
+                                {deletingInfluencerIds.includes(getInfluencerUpdateId(activeInfluencer)) ? "Видалення..." : "Видалити"}
+                            </button>
+                        </div>
+                    </article>
+                </div>
+            )}
             <Footer />
         </div>
     )

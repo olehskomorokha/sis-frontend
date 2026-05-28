@@ -7,7 +7,14 @@ export const parseChannelsResponse = (data) => {
 };
 
 export const getChannelKey = (channel) =>
-  channel.channelUrl || channel.channelName || channel.channelId || channel.ChannelId;
+  channel.influencerId ||
+  channel.InfluencerId ||
+  channel.channelId ||
+  channel.ChannelId ||
+  channel.id ||
+  channel.Id ||
+  channel.channelUrl ||
+  channel.channelName;
 
 export const getClientIdFromToken = (token) => {
   const normalizedToken = typeof token === 'string' ? token.trim() : '';
