@@ -625,6 +625,27 @@ textarea {
   -webkit-line-clamp: 3;
 }
 
+.selection-influencer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selection-influencer-meta span {
+  min-width: 0;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 7px 9px;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.selection-influencer-meta strong {
+  color: #312e81;
+}
+
 .selection-influencer-ai-review {
   display: grid;
   gap: 6px;
@@ -650,6 +671,18 @@ textarea {
   line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
+}
+
+.selection-influencer-stats-section {
+  display: grid;
+  gap: 8px;
+}
+
+.selection-influencer-stats-note {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .selection-influencer-stats {

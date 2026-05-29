@@ -55,11 +55,11 @@ const getScoreValue = (influencer, fieldName) =>
   influencer[fieldName] ?? influencer.influencerScore?.[fieldName] ?? null;
 
 const getBrandFitScore = (influencer) => {
-  if (typeof influencer.score === 'number') {
-    return influencer.score;
+  if (influencer.brandFitScore !== null && influencer.brandFitScore !== undefined) {
+    return influencer.brandFitScore;
   }
 
-  return influencer.brandFitScore ?? null;
+  return influencer.score ?? null;
 };
 
 const toNumberOrNull = (value) => {
@@ -99,16 +99,21 @@ const formatEngagementValue = (value) => {
 const normalizeClientInfluencer = (influencer) => ({
   id: influencer.id,
   influencerId: influencer.influencerId,
+  channelId: influencer.channelId || influencer.influencerId,
   channelName: influencer.channelName,
   channelUrl: influencer.channelUrl,
   platform: influencer.platform,
   description: influencer.description,
   country: influencer.country,
+  countryCode: influencer.countryCode || influencer.country,
+  language: influencer.language || influencer.lenguage,
   lenguage: influencer.lenguage,
   avatarUrl: influencer.avatarUrl,
   followersCount: influencer.followersCount,
   totalScore: influencer.totalScore,
   brandFitScore: influencer.brandFitScore,
+  engagementScore: influencer.engagementScore,
+  score: influencer.score,
   aiReview: influencer.aiReview || '',
   status: influencer.status,
   predictedEngagement: influencer.predictedEngagement,
@@ -124,18 +129,23 @@ const normalizeClientInfluencer = (influencer) => ({
 const normalizeRecommendationInfluencer = (influencer) => ({
   id: influencer.channelId,
   influencerId: influencer.channelId,
+  channelId: influencer.channelId,
   channelName: influencer.channelName,
   channelUrl: influencer.channelUrl,
   platform: 'YouTube',
   description: influencer.description,
   country: influencer.countryCode,
+  countryCode: influencer.countryCode,
+  language: influencer.language,
   lenguage: influencer.language,
   avatarUrl: influencer.avatarUrl,
   followersCount: influencer.followersCount,
-  totalScore: influencer.score,
-  brandFitScore: influencer.score,
+  score: influencer.score,
+  totalScore: influencer.totalScore ?? influencer.score,
+  brandFitScore: influencer.brandFitScore ?? influencer.score,
+  engagementScore: influencer.engagementScore,
   aiReview: influencer.aiReview || '',
-  predictedEngagement: null,
+  predictedEngagement: influencer.predictedEngagement,
   engagementRate: influencer.engagementRate,
   postCount: influencer.videoCount,
   postPerDay: influencer.postPerDay,
@@ -161,14 +171,15 @@ const createInfluencerPayload = (influencer) => ({
   platform: influencer.platform || influencer.Platform || 'YouTube',
   channelName: influencer.channelName || '',
   channelId:
+    influencer.channelId ||
     influencer.influencerId ||
     getChannelIdFromUrl(influencer.channelUrl) ||
     '',
   channelUrl: influencer.channelUrl || '',
   description: influencer.description || '',
-  country: influencer.country || '',
-  countryCode: influencer.country || '',
-  language: influencer.lenguage || '',
+  country: influencer.country || influencer.countryCode || '',
+  countryCode: influencer.countryCode || influencer.country || '',
+  language: influencer.language || influencer.lenguage || '',
   avatarUrl: getChannelImageUrl(influencer),
   aiReview: getAiReviewText(influencer),
   followersCount: influencer.followersCount ?? null,
@@ -178,7 +189,11 @@ const createInfluencerPayload = (influencer) => ({
   avgLike: getScoreValue(influencer, 'avgLikes'),
   avgComment: getScoreValue(influencer, 'avgComments'),
   engagementRate: getScoreValue(influencer, 'engagementRate'),
-  score: toNumberOrNull(getBrandFitScore(influencer)),
+  engagementScore: getScoreValue(influencer, 'engagementScore'),
+  predictedEngagement: getScoreValue(influencer, 'predictedEngagement'),
+  totalScore: getScoreValue(influencer, 'totalScore'),
+  brandFitScore: getBrandFitScore(influencer),
+  score: toNumberOrNull(influencer.score),
 });
 
 function ChannelAvatar({ channel }) {
@@ -369,9 +384,31 @@ function InfluencerRecommendations() {
   };
 
   const getAiReviewKey = (channel) =>
+    channel.channelId ||
     channel.influencerId ||
     getChannelIdFromUrl(channel.channelUrl) ||
     channel.id;
+
+  const renderChannelMeta = (channel) => {
+    const metaItems = [
+      { label: 'Країна', value: channel.countryCode || channel.country },
+      { label: 'Мова', value: channel.language || channel.lenguage },
+    ].filter((item) => item.value !== null && item.value !== undefined && item.value !== '');
+
+    if (metaItems.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="selection-influencer-meta">
+        {metaItems.map((item) => (
+          <span key={item.label}>
+            <strong>{item.label}:</strong> {item.value}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   const handleAiReview = async (channel) => {
     const aiReviewKey = getAiReviewKey(channel);
@@ -434,42 +471,45 @@ function InfluencerRecommendations() {
   );
 
   const renderChannelStats = (channel) => (
-    <div className="selection-influencer-stats">
-      <div>
-        <span>Перегляди</span>
-        <strong>{formatNumber(channel.avgViews)}</strong>
-      </div>
-      <div>
-        <span>Лайки</span>
-        <strong>{formatNumber(channel.avgLikes)}</strong>
-      </div>
-      <div>
-        <span>Коментарі</span>
-        <strong>{formatNumber(channel.avgComments)}</strong>
-      </div>
-      <div>
-        <span>Пости</span>
-        <strong>{formatNumber(channel.postCount)}</strong>
-      </div>
-      <div>
-        <span>Залучення</span>
-        <strong>{formatEngagementValue(channel.engagementRate)}</strong>
-      </div>
-      <div>
-        <span>Підписники</span>
-        <strong>{formatNumber(channel.followersCount)}</strong>
-      </div>
-      <div>
-        <span>Brand fit</span>
-        <strong>{formatNumber(channel.brandFitScore)}</strong>
-      </div>
-      <div>
-        <span>Загальний score</span>
-        <strong>{formatNumber(channel.totalScore)}</strong>
-      </div>
-      <div>
-        <span>Прогноз залучення</span>
-        <strong>{formatEngagementValue(channel.predictedEngagement)}</strong>
+    <div className="selection-influencer-stats-section">
+      <p className="selection-influencer-stats-note">Статистика за останніх пів року</p>
+      <div className="selection-influencer-stats">
+        <div>
+          <span>Перегляди</span>
+          <strong>{formatNumber(channel.avgViews)}</strong>
+        </div>
+        <div>
+          <span>Лайки</span>
+          <strong>{formatNumber(channel.avgLikes)}</strong>
+        </div>
+        <div>
+          <span>Коментарі</span>
+          <strong>{formatNumber(channel.avgComments)}</strong>
+        </div>
+        <div>
+          <span>Пости</span>
+          <strong>{formatNumber(channel.postCount)}</strong>
+        </div>
+        <div>
+          <span>Залучення</span>
+          <strong>{formatEngagementValue(channel.engagementRate)}</strong>
+        </div>
+        <div>
+          <span>Підписники</span>
+          <strong>{formatNumber(channel.followersCount)}</strong>
+        </div>
+        <div>
+          <span>Прогноз залучення</span>
+          <strong>{formatNumber(channel.predictedEngagement)}</strong>
+        </div>
+        <div>
+          <span>Загальний рахунок</span>
+          <strong>{formatNumber(channel.totalScore)}</strong>
+        </div>
+        <div>
+          <span>Постів за день</span>
+          <strong>{formatNumber(channel.postPerDay)}</strong>
+        </div>
       </div>
     </div>
   );
@@ -479,6 +519,8 @@ function InfluencerRecommendations() {
       {channel.description && (
         <p className="selection-influencer-description">{channel.description}</p>
       )}
+
+      {renderChannelMeta(channel)}
 
       {getAiReviewText(channel) && (
         <div className="selection-influencer-ai-review">

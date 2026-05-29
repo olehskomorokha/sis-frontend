@@ -294,16 +294,6 @@ const ClientProfile = () => {
         return Number(value).toLocaleString('uk-UA');
     };
 
-    const formatPercent = (value) => {
-        if (value === null || value === undefined || value === "") {
-            return "Не вказано";
-        }
-
-        return `${(Number(value) * 100).toLocaleString('uk-UA', {
-            maximumFractionDigits: 2
-        })}%`;
-    };
-
     const formatDate = (date) => {
         if (!date || String(date).startsWith("0001-01-01")) {
             return "Не вказано";
@@ -333,8 +323,8 @@ const ClientProfile = () => {
                     <strong>{formatNumber(getInfluencerMetric(influencer, 'avgComments'))}</strong>
                 </div>
                 <div>
-                    <span>Залучення</span>
-                    <strong>{formatPercent(getInfluencerMetric(influencer, 'engagementRate'))}</strong>
+                    <span>Прогнозовані залучення</span>
+                    <strong>{formatNumber(getInfluencerMetric(influencer, 'predictedEngagement'))}</strong>
                 </div>
                 <div>
                     <span>Пости</span>
