@@ -46,6 +46,7 @@ const ClientProfile = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [aiReviewLoadingIds, setAiReviewLoadingIds] = useState([]);
     const [deletingInfluencerIds, setDeletingInfluencerIds] = useState([]);
+    const [deactivatingInfluencerIds, setDeactivatingInfluencerIds] = useState([]);
     const [activeInfluencer, setActiveInfluencer] = useState(null);
     const [error, setError] = useState("");
     const [influencersError, setInfluencersError] = useState("");
@@ -121,6 +122,11 @@ const ClientProfile = () => {
                 : "";
 
     const hasAiReview = (influencer) => Boolean(getAiReviewText(influencer));
+
+    const getInfluencerStatus = (influencer) =>
+        influencer.status ?? influencer.Status ?? 0;
+
+    const isInfluencerInactive = (influencer) => Number(getInfluencerStatus(influencer)) === 1;
 
     const getInfluencerUpdateId = (influencer) => {
         const influencerId =
@@ -476,6 +482,59 @@ const ClientProfile = () => {
         }
     };
 
+    const handleUpdateInfluencerStatus = async (influencer, status) => {
+        const influencerUpdateId = getInfluencerUpdateId(influencer);
+
+        if (!influencerUpdateId) {
+            setInfluencersError("Не вдалося визначити influencerId для оновлення статусу інфлюенсера.");
+            return;
+        }
+
+        setInfluencersError("");
+        setDeactivatingInfluencerIds((currentIds) => [...currentIds, influencerUpdateId]);
+
+        try {
+            const response = await fetch(`${CLIENT_INFLUENCER_API_URL}/update/${encodeURIComponent(influencerUpdateId)}`, {
+                method: 'PUT',
+                headers: {
+                    'accept': '*/*',
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ status })
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                throw new Error(errorMessage || "Не вдалося оновити статус інфлюенсера.");
+            }
+
+            setInfluencers((currentInfluencers) =>
+                currentInfluencers.map((currentInfluencer) =>
+                    getInfluencerUpdateId(currentInfluencer) === influencerUpdateId
+                        ? { ...currentInfluencer, status, Status: status }
+                        : currentInfluencer
+                )
+            );
+            setActiveInfluencer((currentInfluencer) =>
+                currentInfluencer && getInfluencerUpdateId(currentInfluencer) === influencerUpdateId
+                    ? { ...currentInfluencer, status, Status: status }
+                    : currentInfluencer
+            );
+        } catch (error) {
+            console.error('Error:', error);
+            setInfluencersError(error.message || "Помилка оновлення статусу інфлюенсера.");
+        } finally {
+            setDeactivatingInfluencerIds((currentIds) =>
+                currentIds.filter((currentId) => currentId !== influencerUpdateId)
+            );
+        }
+    };
+
+    const handleDeactivateInfluencer = (influencer) => handleUpdateInfluencerStatus(influencer, 1);
+
+    const handleActivateInfluencer = (influencer) => handleUpdateInfluencerStatus(influencer, 0);
+
     const saveSettings = async (event) => {
         event.preventDefault();
         setIsSaving(true);
@@ -522,6 +581,88 @@ const ClientProfile = () => {
             setIsSaving(false);
         }
     };
+
+    const renderInfluencerCard = (influencer) => {
+        const isInactive = isInfluencerInactive(influencer);
+
+        return (
+            <article
+                className={`influencer-card${isInactive ? ' influencer-card-inactive' : ''}`}
+                key={influencer.id || influencer.userName || getInfluencerChannelId(influencer)}
+                role="button"
+                tabIndex="0"
+                onClick={() => setActiveInfluencer(influencer)}
+                onKeyDown={(event) => handleInfluencerCardKeyDown(event, influencer)}
+            >
+                <div className="influencer-card-header">
+                    <div className="influencer-avatar">
+                        {getInfluencerAvatarUrl(influencer) ? (
+                            <img
+                                src={getInfluencerAvatarUrl(influencer)}
+                                alt={getInfluencerName(influencer)}
+                                referrerPolicy="no-referrer"
+                                onError={(event) => {
+                                    event.currentTarget.parentElement.textContent =
+                                        (getInfluencerName(influencer) || "I").charAt(0).toUpperCase();
+                                }}
+                            />
+                        ) : (
+                            (getInfluencerName(influencer) || "I").charAt(0).toUpperCase()
+                        )}
+                    </div>
+                    <div>
+                        {getInfluencerChannelUrl(influencer) ? (
+                            <a
+                                className="influencer-card-link"
+                                href={getInfluencerChannelUrl(influencer)}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                            >
+                                <h3>{formatValue(getInfluencerName(influencer))}</h3>
+                            </a>
+                        ) : (
+                            <h3>{formatValue(getInfluencerName(influencer))}</h3>
+                        )}
+                        <p>{formatValue(influencer.platform)}</p>
+                    </div>
+                </div>
+                <div className="influencer-meta">
+                    <span>{formatValue(influencer.platform)}</span>
+                    <span>{formatValue(influencer.country)}</span>
+                    {isInactive && <span>Неактивний</span>}
+                </div>
+                {(influencer.bio || influencer.description) &&
+                    <p className="influencer-bio">{influencer.bio || influencer.description}</p>
+                }
+                {hasAiReview(influencer) && (
+                    <div className="influencer-ai-review">
+                        <strong>AI аналіз</strong>
+                        <p>{getAiReviewText(influencer)}</p>
+                    </div>
+                )}
+                {renderInfluencerStats(influencer)}
+                {!hasAiReview(influencer) && (
+                    <div className="influencer-card-actions">
+                        <button
+                            className="profile-button profile-button-secondary"
+                            type="button"
+                            disabled={aiReviewLoadingIds.includes(getInfluencerChannelId(influencer))}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                handleAiReview(influencer);
+                            }}
+                        >
+                            {aiReviewLoadingIds.includes(getInfluencerChannelId(influencer)) ? "Аналіз..." : "AI аналіз"}
+                        </button>
+                    </div>
+                )}
+            </article>
+        );
+    };
+
+    const activeInfluencers = influencers.filter((influencer) => !isInfluencerInactive(influencer));
+    const inactiveInfluencers = influencers.filter(isInfluencerInactive);
 
     return(
         <div className="profile-shell">
@@ -600,7 +741,7 @@ const ClientProfile = () => {
                                     <span>Звʼязки</span>
                                     <h2>Доступні інфлюенсери</h2>
                                 </div>
-                                <strong>{influencers.length}</strong>
+                                <strong>{activeInfluencers.length}</strong>
                             </div>
 
                             {isInfluencersLoading && <div className="profile-message">Завантаження інфлюенсерів...</div>}
@@ -608,9 +749,9 @@ const ClientProfile = () => {
                             {!isInfluencersLoading && !influencersError && influencers.length === 0 &&
                                 <div className="profile-empty-state">Інфлюенсерів поки немає.</div>
                             }
-                            {!isInfluencersLoading && influencers.length > 0 &&
+                            {!isInfluencersLoading && activeInfluencers.length > 0 &&
                                 <div className="influencer-grid">
-                                    {influencers.map((influencer) => (
+                                    {activeInfluencers.map((influencer) => (
                                         <article
                                             className="influencer-card"
                                             key={influencer.id || influencer.userName}
@@ -685,6 +826,23 @@ const ClientProfile = () => {
                                     ))}
                                 </div>
                             }
+                            {!isInfluencersLoading && influencers.length > 0 && activeInfluencers.length === 0 &&
+                                <div className="profile-empty-state">Активних інфлюенсерів поки немає.</div>
+                            }
+                            {!isInfluencersLoading && inactiveInfluencers.length > 0 && (
+                                <div className="inactive-influencers-section">
+                                    <div className="profile-section-header profile-section-header-compact">
+                                        <div>
+                                            <span>Статус</span>
+                                            <h2>Неактивні інфлюенсери</h2>
+                                        </div>
+                                        <strong>{inactiveInfluencers.length}</strong>
+                                    </div>
+                                    <div className="influencer-grid">
+                                        {inactiveInfluencers.map(renderInfluencerCard)}
+                                    </div>
+                                </div>
+                            )}
                         </section>
                     }
                 </div>
@@ -770,6 +928,22 @@ const ClientProfile = () => {
                                     {aiReviewLoadingIds.includes(getInfluencerChannelId(activeInfluencer)) ? "Аналіз..." : "AI аналіз"}
                                 </button>
                             )}
+                            <button
+                                className="profile-button profile-button-muted"
+                                type="button"
+                                disabled={deactivatingInfluencerIds.includes(getInfluencerUpdateId(activeInfluencer))}
+                                onClick={() => (
+                                    isInfluencerInactive(activeInfluencer)
+                                        ? handleActivateInfluencer(activeInfluencer)
+                                        : handleDeactivateInfluencer(activeInfluencer)
+                                )}
+                            >
+                                {deactivatingInfluencerIds.includes(getInfluencerUpdateId(activeInfluencer))
+                                    ? "Оновлення..."
+                                    : isInfluencerInactive(activeInfluencer)
+                                        ? "Активувати"
+                                        : "Приховати"}
+                            </button>
                             <button
                                 className="profile-button profile-button-muted-danger profile-modal-delete-button"
                                 type="button"
