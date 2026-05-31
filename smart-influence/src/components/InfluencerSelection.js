@@ -45,6 +45,7 @@ const parseTagsResponse = (responseText) => {
 
 function InfluencerSelection() {
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
   const [analysisMessage, setAnalysisMessage] = useState('');
   const [description, setDescription] = useState('');
   const [country, setCountry] = useState('UA');
@@ -60,6 +61,11 @@ function InfluencerSelection() {
   const [areTagsLoading, setAreTagsLoading] = useState(true);
 
   useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return undefined;
+    }
+
     const controller = new AbortController();
 
     const loadTags = async () => {
@@ -70,6 +76,7 @@ function InfluencerSelection() {
         const response = await fetch(TAGS_API_URL, {
           headers: {
             accept: 'text/plain',
+            Authorization: `Bearer ${token}`,
           },
           signal: controller.signal,
         });
@@ -95,7 +102,7 @@ function InfluencerSelection() {
     loadTags();
 
     return () => controller.abort();
-  }, []);
+  }, [navigate, token]);
 
   const runAnalysis = async () => {
     if (!description.trim()) {
@@ -103,7 +110,6 @@ function InfluencerSelection() {
       return;
     }
 
-    const token = localStorage.getItem('token');
     const payload = {
       description: description.trim(),
       country,
@@ -153,14 +159,23 @@ function InfluencerSelection() {
     const normalizedSearch = tagSearch.trim().toLowerCase();
 
     return availableTags
-      .filter((tag) => !selectedTags.includes(tag))
+      .filter((tag) => !selectedTags.some((selectedTag) => selectedTag.toLowerCase() === tag.toLowerCase()))
       .filter((tag) => tag.toLowerCase().includes(normalizedSearch))
       .slice(0, 8);
   }, [availableTags, selectedTags, tagSearch]);
 
+  const tagSearchValue = tagSearch.trim();
+  const hasSelectedTag = (tag) =>
+    selectedTags.some((selectedTag) => selectedTag.toLowerCase() === tag.toLowerCase());
+  const hasAvailableTag = (tag) =>
+    availableTags.some((availableTag) => availableTag.toLowerCase() === tag.toLowerCase());
+  const canAddCustomTag = Boolean(tagSearchValue) && !hasSelectedTag(tagSearchValue) && !hasAvailableTag(tagSearchValue);
+
   const addSelectedTag = (tag) => {
-    if (tag && availableTags.includes(tag) && !selectedTags.includes(tag)) {
-      setSelectedTags((currentTags) => [...currentTags, tag]);
+    const normalizedTag = typeof tag === 'string' ? tag.trim() : '';
+
+    if (normalizedTag && !hasSelectedTag(normalizedTag)) {
+      setSelectedTags((currentTags) => [...currentTags, normalizedTag]);
       setTagSearch('');
       setIsTagMenuOpen(false);
     }
@@ -171,9 +186,13 @@ function InfluencerSelection() {
   };
 
   const handleTagSearchKeyDown = (event) => {
-    if (event.key === 'Enter' && tagsForSearch.length > 0) {
+    if (event.key === 'Enter' && tagSearchValue) {
       event.preventDefault();
-      addSelectedTag(tagsForSearch[0]);
+      const matchingAvailableTag = availableTags.find(
+        (availableTag) => availableTag.toLowerCase() === tagSearchValue.toLowerCase()
+      );
+
+      addSelectedTag(matchingAvailableTag || tagSearchValue);
     }
 
     if (event.key === 'Escape') {
@@ -181,8 +200,8 @@ function InfluencerSelection() {
     }
   };
 
-  const isTagSearchDisabled = areTagsLoading || Boolean(tagsError) || availableTags.length === 0;
-  const shouldShowTagMenu = isTagMenuOpen && !isTagSearchDisabled;
+  const isTagSearchDisabled = areTagsLoading;
+  const shouldShowTagMenu = isTagMenuOpen && !isTagSearchDisabled && (tagsForSearch.length > 0 || canAddCustomTag);
 
   return (
     <div className="page">
@@ -242,7 +261,7 @@ function InfluencerSelection() {
                   type="text"
                   value={tagSearch}
                   disabled={isTagSearchDisabled}
-                  placeholder={areTagsLoading ? 'Завантаження тегів...' : 'Краса, здоровʼя, авто тощо'}
+                  placeholder={areTagsLoading ? 'Завантаження тегів...' : 'Введіть тег або оберіть зі списку'}
                   autoComplete="off"
                   role="combobox"
                   aria-autocomplete="list"
@@ -258,25 +277,31 @@ function InfluencerSelection() {
                 />
                 {shouldShowTagMenu && (
                   <div className="tag-dropdown" id="tag-search-options" role="listbox">
-                    {tagsForSearch.length > 0 ? (
-                      tagsForSearch.map((tag) => (
-                        <button
-                          className="tag-option"
-                          type="button"
-                          role="option"
-                          aria-selected="false"
-                          key={tag}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => addSelectedTag(tag)}
-                        >
-                          {tag}
-                        </button>
-                      ))
-                    ) : (
-                      <div className="tag-empty-state">
-                        Такого тегу немає в базі даних
-                      </div>
+                    {canAddCustomTag && (
+                      <button
+                        className="tag-option tag-option-add"
+                        type="button"
+                        role="option"
+                        aria-selected="false"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => addSelectedTag(tagSearchValue)}
+                      >
+                        Додати "{tagSearchValue}"
+                      </button>
                     )}
+                    {tagsForSearch.map((tag) => (
+                      <button
+                        className="tag-option"
+                        type="button"
+                        role="option"
+                        aria-selected="false"
+                        key={tag}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => addSelectedTag(tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>

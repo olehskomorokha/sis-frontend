@@ -423,6 +423,11 @@ textarea {
   color: #1d4ed8;
 }
 
+.tag-option-add {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
 .tag-option:last-child {
   border-bottom: none;
 }

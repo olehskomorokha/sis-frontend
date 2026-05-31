@@ -300,6 +300,20 @@ const ClientProfile = () => {
         return Number(value).toLocaleString('uk-UA');
     };
 
+    const formatWholeNumber = (value) => {
+        if (value === null || value === undefined || value === "") {
+            return "Не вказано";
+        }
+
+        const numberValue = Number(value);
+
+        if (!Number.isFinite(numberValue)) {
+            return "Не вказано";
+        }
+
+        return Math.round(numberValue).toLocaleString('uk-UA');
+    };
+
     const formatDate = (date) => {
         if (!date || String(date).startsWith("0001-01-01")) {
             return "Не вказано";
@@ -330,7 +344,7 @@ const ClientProfile = () => {
                 </div>
                 <div>
                     <span>Прогнозовані залучення</span>
-                    <strong>{formatNumber(getInfluencerMetric(influencer, 'predictedEngagement'))}</strong>
+                    <strong>{formatWholeNumber(getInfluencerMetric(influencer, 'predictedEngagement'))}</strong>
                 </div>
                 <div>
                     <span>Пости</span>

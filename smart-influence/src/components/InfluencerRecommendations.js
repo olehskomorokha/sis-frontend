@@ -96,6 +96,20 @@ const formatEngagementValue = (value) => {
     : formatPercent(numberValue);
 };
 
+const formatWholeNumber = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return '-';
+  }
+
+  return Math.round(numberValue).toLocaleString('uk-UA');
+};
+
 const normalizeClientInfluencer = (influencer) => ({
   id: influencer.id,
   influencerId: influencer.influencerId,
@@ -500,7 +514,7 @@ function InfluencerRecommendations() {
         </div>
         <div>
           <span>Прогноз залучення</span>
-          <strong>{formatNumber(channel.predictedEngagement)}</strong>
+          <strong>{formatWholeNumber(channel.predictedEngagement)}</strong>
         </div>
         <div>
           <span>Загальний рахунок</span>
