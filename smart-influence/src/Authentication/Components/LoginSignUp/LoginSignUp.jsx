@@ -9,10 +9,31 @@ import password_icon from '../Assets/password.png';
 const ACTION_LOGIN = 'login';
 const ACTION_SIGN_UP = 'sign-up';
 
+const getLoginErrorMessage = (responseText) => {
+    if (!responseText.trim()) {
+        return 'Неправильний пароль';
+    }
+
+    try {
+        const parsedError = JSON.parse(responseText);
+
+        if (parsedError?.code === 'invalid_credentials') {
+            return 'Неправильний пароль';
+        }
+    } catch {
+        return responseText;
+    }
+
+    return 'Неправильний пароль';
+};
+
 const LoginSingUp = () => {
     const navigate = useNavigate();
     const [action, setAction] = useState(ACTION_LOGIN);
     const [errors, setErrors] = useState({});
+    const [authMessage, setAuthMessage] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [token, setToken] = useState(localStorage.getItem('token'));
 
     useEffect(() => {
@@ -31,8 +52,10 @@ const LoginSingUp = () => {
 
     const validateForm = () => {
         const validationErrors = {};
+        setAuthMessage('');
         const email = getFieldValue('emailInput');
         const password = getFieldValue('passwordInput');
+        const confirmPassword = getFieldValue('confirmPasswordInput');
 
         if (action === ACTION_SIGN_UP) {
             const brand = getFieldValue('brandInput');
@@ -56,6 +79,14 @@ const LoginSingUp = () => {
             validationErrors.password = "Пароль має містити щонайменше 6 символів";
         }
 
+        if (action === ACTION_SIGN_UP) {
+            if (!confirmPassword) {
+                validationErrors.confirmPassword = "Повторіть пароль";
+            } else if (password && confirmPassword !== password) {
+                validationErrors.confirmPassword = "Паролі не співпадають";
+            }
+        }
+
         setErrors(validationErrors);
         return Object.keys(validationErrors).length === 0;
     };
@@ -63,6 +94,9 @@ const LoginSingUp = () => {
     const changeAction = (nextAction) => {
         setAction(nextAction);
         setErrors({});
+        setAuthMessage('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
     };
 
     const submit = async () => {
@@ -86,14 +120,13 @@ const LoginSingUp = () => {
             });
 
             if (response.ok) {
-                alert('Користувача успішно зареєстровано');
                 navigate("/");
             } else {
-                alert("Користувач із такою електронною поштою уже існує");
+                setAuthMessage("Користувач із такою електронною поштою уже існує");
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Помилка реєстрації користувача');
+            setAuthMessage('Помилка реєстрації користувача');
         }
     };
 
@@ -118,18 +151,17 @@ const LoginSingUp = () => {
 
             if (response.ok) {
                 let token = await response.text();
-                alert('Вхід виконано успішно');
                 
                 localStorage.setItem('token', token);
                 setToken(token);
                 navigate("/profile");
             } else {
                 let errorMessage = await response.text();
-                alert(errorMessage || 'Не вдалося увійти');
+                setAuthMessage(getLoginErrorMessage(errorMessage));
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Помилка входу');
+            setAuthMessage('Помилка входу');
         }
     };
 
@@ -163,18 +195,48 @@ const LoginSingUp = () => {
                 <div className="field">
                     <div className={`input ${errors.password ? "input-error" : ""}`}>
                         <img src={password_icon} alt=""></img>
-                        <input type="password" placeholder='пароль' id="passwordInput"></input>
+                        <input type={showPassword ? "text" : "password"} placeholder='пароль' id="passwordInput"></input>
+                        <button
+                            className={`password-toggle${showPassword ? " password-toggle-visible" : ""}`}
+                            type="button"
+                            aria-label={showPassword ? "Приховати пароль" : "Показати пароль"}
+                            onClick={() => setShowPassword((currentValue) => !currentValue)}
+                        >
+                            <span className="eye-icon" aria-hidden="true"></span>
+                        </button>
                     </div>
                     {errors.password && <div className="error-message">{errors.password}</div>}
                 </div>
+                {action === ACTION_SIGN_UP &&
+                    <div className="field">
+                        <div className={`input ${errors.confirmPassword ? "input-error" : ""}`}>
+                            <img src={password_icon} alt=""></img>
+                            <input type={showConfirmPassword ? "text" : "password"} placeholder='повторіть пароль' id="confirmPasswordInput"></input>
+                            <button
+                                className={`password-toggle${showConfirmPassword ? " password-toggle-visible" : ""}`}
+                                type="button"
+                                aria-label={showConfirmPassword ? "Приховати пароль" : "Показати пароль"}
+                                onClick={() => setShowConfirmPassword((currentValue) => !currentValue)}
+                            >
+                                <span className="eye-icon" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                        {errors.confirmPassword && <div className="error-message">{errors.confirmPassword}</div>}
+                    </div>
+                }
             </div>
-            {action === ACTION_SIGN_UP ? <div></div> :
-                <div className="forgot-password">Забули пароль? <span>Натисніть тут</span></div>
-            }
+            {authMessage && <div className="auth-message">{authMessage}</div>}
             <div className='submit-container'>
-                <div className={action === ACTION_LOGIN ? "submit gray" : "submit"} onClick={() => { changeAction(ACTION_SIGN_UP) }}>Реєстрація</div>
-                <div className={action === ACTION_SIGN_UP ? "submit gray" : "submit"} onClick={() => { changeAction(ACTION_LOGIN) }}>Вхід</div>
-                <button id="submitBtn" type="submit" onClick={action === ACTION_LOGIN ? login : submit}>Підтвердити</button>
+                <button className="submit" type="button" onClick={action === ACTION_LOGIN ? login : submit}>
+                    {action === ACTION_LOGIN ? 'Увійти' : 'Зареєструватися'}
+                </button>
+                <button
+                    className="submit submit-secondary"
+                    type="button"
+                    onClick={() => changeAction(action === ACTION_LOGIN ? ACTION_SIGN_UP : ACTION_LOGIN)}
+                >
+                    {action === ACTION_LOGIN ? 'Реєстрація' : 'Вхід'}
+                </button>
             </div>
         </div>
     )

@@ -356,7 +356,7 @@ function InfluencerSelection() {
               />
             </label>
             <button className="primary-button" type="button" onClick={runAnalysis} disabled={isAnalyzing}>
-              {isAnalyzing ? 'Аналіз триває...' : 'Запустити аналіз'}
+              {isAnalyzing ? 'Аналіз триває...' : 'Запустити підбір'}
             </button>
             {analysisMessage && <p className="form-message">{analysisMessage}</p>}
           </div>
