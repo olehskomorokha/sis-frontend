@@ -123,12 +123,7 @@ $RECYCLE.BIN/
 *.lnk
 
 ### VS Code
-# VSCode settings (keep shared configuration)
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 
 # Local History for Visual Studio Code
 .history/
