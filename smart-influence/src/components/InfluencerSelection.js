@@ -6,9 +6,10 @@ import '../App.css';
 import {
   parseChannelsResponse,
 } from '../utils/influencers';
+import { API_BASE_URL } from '../config/api';
 
-const TAGS_API_URL = 'https://localhost:7237/api/Elasticsearch/bloggerTags';
-const RECOMMENDATIONS_API_URL = 'https://localhost:7237/api/Influencer/recommendations';
+const TAGS_API_URL = `${API_BASE_URL}/Elasticsearch/bloggerTags`;
+const RECOMMENDATIONS_API_URL = `${API_BASE_URL}/Influencer/recommendations`;
 
 const COUNTRIES = [
   { value: 'UA', label: 'Україна' },

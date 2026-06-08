@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Footer from '../../../components/Footer';
 import Header from '../../../components/Header';
 import { getClientIdFromToken } from '../../../utils/influencers';
+import { API_BASE_URL } from '../../../config/api';
 import './ClientProfile.css';
 
-const CLIENT_API_URL = 'https://localhost:7237/api/Client';
-const CLIENT_INFLUENCERS_API_URL = 'https://localhost:7237/api/ClientInfluencer';
-const CLIENT_INFLUENCER_API_URL = 'https://localhost:7237/api/ClientInfluencer';
-const AI_REVIEW_API_URL = 'https://localhost:7237/api/Ai/review';
+const CLIENT_API_URL = `${API_BASE_URL}/Client`;
+const CLIENT_INFLUENCERS_API_URL = `${API_BASE_URL}/ClientInfluencer`;
+const CLIENT_INFLUENCER_API_URL = `${API_BASE_URL}/ClientInfluencer`;
+const AI_REVIEW_API_URL = `${API_BASE_URL}/Ai/review`;
 
 const parseJsonResponse = (responseText, fallbackValue) => {
     if (!responseText.trim()) {
@@ -562,7 +563,7 @@ const ClientProfile = () => {
         };
 
         try {
-            const response = await fetch('https://localhost:7237/api/Client', {
+            const response = await fetch(`${API_BASE_URL}/Client`, {
                 method: 'PUT',
                 headers: {
                     'accept': '*/*',

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import user_icon from '../Assets/person.png';
 import email_icon from '../Assets/email.png';
 import password_icon from '../Assets/password.png';
+import { API_BASE_URL } from '../../../config/api';
 
 const ACTION_LOGIN = 'login';
 const ACTION_SIGN_UP = 'sign-up';
@@ -111,7 +112,7 @@ const LoginSingUp = () => {
         };
 
         try {
-            let response = await fetch('https://localhost:7237/api/Client', {
+            let response = await fetch(`${API_BASE_URL}/Client`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -141,7 +142,7 @@ const LoginSingUp = () => {
         };
 
         try {
-            let response = await fetch('https://localhost:7237/api/Client/login', {
+            let response = await fetch(`${API_BASE_URL}/Client/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

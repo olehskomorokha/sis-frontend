@@ -9,9 +9,10 @@ import {
   getClientIdFromToken,
   getChannelKey,
 } from '../utils/influencers';
+import { API_BASE_URL } from '../config/api';
 
-const API_ORIGIN = 'https://localhost:7237';
-const CLIENT_INFLUENCERS_API_URL = `${API_ORIGIN}/ClientInfluencer`;
+const API_ORIGIN = new URL(API_BASE_URL).origin;
+const CLIENT_INFLUENCERS_API_URL = `${API_BASE_URL}/ClientInfluencer`;
 
 const getChannelImageUrl = (channel) => {
   const imageUrl =
@@ -346,7 +347,7 @@ function InfluencerRecommendations() {
 
     const token = localStorage.getItem('token');
     const clientId = getClientIdFromToken(token);
-    const API_ADD_URL = 'https://localhost:7237/api/Influencer/add-influencer';
+    const API_ADD_URL = `${API_BASE_URL}/Influencer/add-influencer`;
 
     if (!clientId) {
       setSaveMessage('Не вдалося визначити ID клієнта з токена. Увійдіть у профіль ще раз.');
@@ -437,7 +438,7 @@ function InfluencerRecommendations() {
     setAiReviewLoadingKeys((currentKeys) => [...currentKeys, aiReviewKey]);
 
     try {
-      const response = await fetch(`${API_ORIGIN}/api/Ai/review/${encodeURIComponent(aiReviewKey)}`, {
+      const response = await fetch(`${API_BASE_URL}/Ai/review/${encodeURIComponent(aiReviewKey)}`, {
         method: 'GET',
         headers: {
           accept: 'text/plain',
