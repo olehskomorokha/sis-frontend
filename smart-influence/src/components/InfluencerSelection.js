@@ -10,6 +10,8 @@ import { API_BASE_URL } from '../config/api';
 
 const TAGS_API_URL = `${API_BASE_URL}/Elasticsearch/bloggerTags`;
 const RECOMMENDATIONS_API_URL = `${API_BASE_URL}/Influencer/recommendations`;
+const INVALID_PRODUCT_DESCRIPTION_MESSAGE =
+  'Опис має чітко описувати продукт, послугу або рекламну кампанію.';
 
 const COUNTRIES = [
   { value: 'UA', label: 'Україна' },
@@ -42,6 +44,20 @@ const parseTagsResponse = (responseText) => {
       .map((tag) => tag.trim())
       .filter(Boolean);
   }
+};
+
+const getRecommendationErrorMessage = (responseText) => {
+  try {
+    const parsed = JSON.parse(responseText);
+
+    if (parsed?.code === 'invalid_product_description') {
+      return INVALID_PRODUCT_DESCRIPTION_MESSAGE;
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
 };
 
 function InfluencerSelection() {
@@ -136,7 +152,9 @@ function InfluencerSelection() {
 
       if (!response.ok) {
         const errorMessage = await response.text();
-        throw new Error(errorMessage || 'Не вдалося запустити аналіз');
+        throw new Error(
+          getRecommendationErrorMessage(errorMessage) || 'Не вдалося запустити аналіз'
+        );
       }
 
       const data = await response.json();
@@ -150,7 +168,11 @@ function InfluencerSelection() {
       navigate('/influencer-recommendations', { state: { channels: recommendedChannels } });
     } catch (error) {
       console.error('Recommendation error:', error);
-      setAnalysisMessage('Не вдалося виконати аналіз. Перевірте, чи запущений backend та Elasticsearch.');
+      setAnalysisMessage(
+        error.message === INVALID_PRODUCT_DESCRIPTION_MESSAGE
+          ? INVALID_PRODUCT_DESCRIPTION_MESSAGE
+          : 'Не вдалося виконати аналіз. Перевірте, чи запущений backend та Elasticsearch.'
+      );
     } finally {
       setIsAnalyzing(false);
     }
@@ -236,7 +258,10 @@ function InfluencerSelection() {
             </span>
             <textarea
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={(event) => {
+                setDescription(event.target.value);
+                setAnalysisMessage('');
+              }}
               placeholder="Наприклад: натуральна косметика для молодої аудиторії в Європі"
             />
           </label>
